@@ -51,7 +51,7 @@ class AidTrace(gl.Contract):
     @gl.public.write
     def set_reviewer_authorization(self, reviewer_address: str, authorized: bool) -> None:
         self._require_admin()
-        clean_addr = reviewer_address.strip().lower()
+        clean_addr = str(reviewer_address).strip().lower()
         if not clean_addr:
             raise gl.vm.UserError("[EXPECTED] Invalid reviewer address")
         self.authorized_reviewers[clean_addr] = authorized
@@ -470,7 +470,7 @@ Return ONLY valid JSON with keys:
 
     @gl.public.view
     def is_authorized_reviewer(self, reviewer_address: str) -> bool:
-        clean = reviewer_address.strip().lower()
+        clean = str(reviewer_address).strip().lower()
         return self.authorized_reviewers.get(clean, False) or (clean == str(self.admin).lower())
 
     @gl.public.view

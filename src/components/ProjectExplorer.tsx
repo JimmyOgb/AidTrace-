@@ -87,7 +87,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
       <div className="flex flex-col gap-6">
         {projects.map((project) => {
           const isExpanded = expandedProjectId === project.id;
-          const isStudioNet = project.networkSource === "StudioNet On-Chain";
+          const isStudioNet = project.networkSource.includes("StudioNet");
 
           return (
             <div
@@ -138,6 +138,15 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                   {project.description}
                 </p>
 
+                {/* Truthful Disclosure Banner */}
+                <div className="bg-amber-500/10 border border-amber-500/20 px-3.5 py-2.5 rounded-xl text-amber-200/90 text-xs flex items-start gap-2.5">
+                  <AlertCircle size={15} className="text-amber-400 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong className="text-amber-300 font-semibold">Integrity Disclosure: </strong>
+                    {project.disclaimer}
+                  </div>
+                </div>
+
                 {/* Key Metrics Row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex items-center gap-2.5">
@@ -151,9 +160,9 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                   <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex items-center gap-2.5">
                     <Users size={18} className="text-blue-400 shrink-0" />
                     <div className="min-w-0">
-                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Beneficiaries</span>
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Target Beneficiaries</span>
                       <span className="text-xs font-medium text-white truncate block">
-                        {project.aggregate_beneficiaries_target} (Aggregate)
+                        {project.aggregate_beneficiaries_target} (Planning Target)
                       </span>
                     </div>
                   </div>
@@ -161,7 +170,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                   <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex items-center gap-2.5">
                     <Target size={18} className="text-rose-400 shrink-0" />
                     <div className="min-w-0">
-                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Funding Goal</span>
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Declared Target</span>
                       <span className="text-xs font-medium text-white truncate block">{project.target_funding}</span>
                     </div>
                   </div>
@@ -169,7 +178,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                   <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex items-center gap-2.5">
                     <FileCheck2 size={18} className="text-emerald-400 shrink-0" />
                     <div className="min-w-0">
-                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Received</span>
+                      <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Recorded Funding</span>
                       <span className="text-xs font-medium text-emerald-300 truncate block">
                         {project.total_received}
                       </span>

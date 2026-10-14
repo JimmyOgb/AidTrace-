@@ -17,14 +17,14 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ onExploreProje
     {
       id: 0,
       title: "Transparent Project Records",
-      tagline: "Declared targets vs. received funds",
+      tagline: "Declared targets vs. recorded funding entries",
       description:
-        "Register aid initiatives with explicit outcome targets, aggregate beneficiary metrics, and milestone allocations. AidTrace transparently distinguishes declared funding targets from actual funds received, preventing misleading claims.",
+        "Register aid initiatives with explicit outcome targets, aggregate beneficiary metrics, and milestone allocations. AidTrace transparently distinguishes declared funding targets from informational recorded funding entries, preventing misleading claims.",
       icon: <Eye className="text-amber-400" size={24} />,
       badge: "On-Chain Registry",
       detailItems: [
         "Aggregate beneficiary targets (zero personal PII)",
-        "Declared funding goals vs. actual wallet balances",
+        "Declared funding targets vs. recorded accounting entries",
         "Coarse geographic delineation to protect communities",
       ],
     },
