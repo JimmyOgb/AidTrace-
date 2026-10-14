@@ -1,11 +1,16 @@
 {
   "name": "aidtrace",
   "version": "1.0.0",
-  "description": "Transparent Aid. Verifiable Impact. Web3 for Social Good Hackathon 2026.",
+  "type": "module",
   "scripts": {
-    "compile": "hardhat compile",
-    "test": "hardhat test",
-    "node": "hardhat node",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "pytest tests/direct/ -v",
+    "test:genlayer": "pytest tests/direct/ -v",
+    "test:solidity": "hardhat test",
+    "lint:genlayer": "genvm-lint check contracts/aid_trace.py",
+    "compile:solidity": "hardhat compile",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
@@ -21,8 +26,22 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.2",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^20.11.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "autoprefixer": "^10.6.1",
     "hardhat": "^2.22.2",
-    "typescript": "^5.4.5"
+    "postcss": "^8.5.30",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.4.5",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "lucide-react": "^1.57.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

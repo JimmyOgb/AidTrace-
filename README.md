@@ -3,44 +3,58 @@
 > **Target:** Tech Track Submission — Web3 for Social Good Hackathon 2026  
 > **Submission Deadline:** October 25, 2026  
 > **Budget Constraint:** Strictly $0.00 USD  
-> **Current Status:** Phase 1 Complete (Research, Scope, & Architecture Finalized)
+> **Primary Network:** **GenLayer StudioNet** (Chain ID: `61999`, RPC: `https://studio.genlayer.com/api`)  
+> **Deployed Contract Address:** `0x43257a38E30eb0C522761992ee71C4Cb9f2A2338`  
+> **Status:** Live & Tested (10/10 Direct Tests Passing, 19/19 Solidity Behavioral Baseline Tests Preserved, Frontend Built)
 
 ---
 
 ## 1. What is AidTrace?
 
-**AidTrace** is a zero-cost, verifiable Web3 application engineered to solve the transparency and accountability crisis in community aid distribution. It bridges on-chain financial accounting and milestone tracking with off-chain operational evidence, verified through authorized independent reviewers—without exposing vulnerable beneficiaries to privacy violations.
+**AidTrace** is a zero-cost, verifiable Web3 intelligent application engineered to solve the transparency and accountability crisis in community aid distribution. It bridges on-chain financial accounting and milestone tracking with off-chain operational evidence, verified through GenLayer intelligent consensus and authorized independent reviewers—without exposing vulnerable beneficiaries to privacy violations.
 
 ### Key Principles
-- **No "Garbage-In, Garbage-Out":** File hashes and blockchain transactions establish data integrity and timestamps; they do **not** magically prove physical aid delivery. Verification requires authorized independent human/organizational attestations.
-- **Strict Privacy Boundaries:** Zero personally identifiable information (PII) on-chain or on public IPFS nodes. Beneficiary data is strictly represented in aggregate counts.
-- **Fail-Closed Security:** In the event of network disruption, authorization failure, or corrupted data, the application halts state transitions and visibly alerts users rather than assuming success.
-- **Public Auditability ($0 Wallet Requirement):** Donors, journalists, and the general public can audit live on-chain project records and verify document integrity in their browser without owning crypto, paying gas, or connecting a Web3 wallet.
+- **Separation of AI Assessment and Human Attestation:** GenLayer validator consensus evaluates criteria alignment against non-sensitive evidence metadata. An AI assessment **never** equates to physical delivery. An authorized field reviewer must attest real-world completion.
+- **Strict Privacy Boundaries:** Zero personally identifiable information (PII) on-chain. Beneficiary data is strictly represented in aggregate counts.
+- **Fail-Closed Security:** Unauthorized callers, tampered evidence, or invalid state transitions revert with deterministic custom errors.
+- **Public Auditability ($0 Requirement):** Donors, journalists, and communities can audit live on-chain project records and verify document integrity in their browser without owning crypto, paying gas, or connecting a Web3 wallet.
 
 ---
 
 ## 2. Documentation Suite
 
-Full technical specifications, threat models, and research reports are available in the [`docs/`](./docs) directory:
-
-- [**Hackathon Requirements & Compliance**](./docs/HACKATHON_REQUIREMENTS.md): Confirmation of rules, judging criteria mapping, confirmed facts vs. assumptions, and submission checklist.
+- [**GenLayer StudioNet Migration Mapping**](./docs/GENLAYER_MIGRATION_MAPPING.md): Detailed architectural translation from Solidity EVM to GenLayer Python Intelligent Contracts.
+- [**Hackathon Requirements & Compliance**](./docs/HACKATHON_REQUIREMENTS.md): Rules confirmation, judging criteria mapping, confirmed facts vs. assumptions, and submission checklist.
 - [**Project Scope & Problem Specification**](./docs/PROJECT_SCOPE.md): Problem definition, stakeholder user journeys, on-chain vs. off-chain boundaries, and MVP scope.
-- [**Technical Architecture Specification**](./docs/TECHNICAL_ARCHITECTURE.md): System architecture, blockchain selection (Base Sepolia + Local Hardhat EVM), data models, smart contract interface, and frontend design.
-- [**Implementation Plan & Roadmap**](./docs/IMPLEMENTATION_PLAN.md): 5-phase execution plan, automated testing acceptance criteria, and judging video runbook.
-- [**Risk Register & Mitigations**](./docs/RISK_REGISTER.md): Threat modeling across privacy, smart contracts, RPC availability, and budget constraints.
+- [**Technical Architecture Specification**](./docs/TECHNICAL_ARCHITECTURE.md): System design, GenLayer network selection, data models, and fail-closed design.
+- [**Implementation Plan & Roadmap**](./docs/IMPLEMENTATION_PLAN.md): Phased roadmap, automated testing criteria, and video presentation runbook.
+- [**Risk Register & Mitigations**](./docs/RISK_REGISTER.md): Threat modeling across privacy, AI consensus boundaries, and zero-dollar budget compliance.
 
 ---
 
-## 3. Technology Stack & Blockchain Selection
+## 3. Technology Stack & Deployment
 
-- **Smart Contract Layer:** Solidity `^0.8.24` (OpenZeppelin security patterns, ReentrancyGuard, RBAC).
-- **Target Network:** **Base Sepolia** (Ethereum L2, Chain ID `84532`, 2s block times, micro-cent test fees, reliable public RPC `https://sepolia.base.org`).
-- **Local Testing Environment:** Hardhat EVM (`chainId: 31337`) with TypeScript & Ethers v6.
-- **Client Application:** React 18 + Vite + TypeScript + Tailwind CSS.
-- **Client-Side Verification:** Native Web Cryptography API (`crypto.subtle.digest`) for zero-dependency SHA-256 evidence hashing in the browser.
+- **Primary Intelligent Contract:** `contracts/aid_trace.py` (GenLayer Python Intelligent Contract with pinned runner `py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6`).
+- **Deployed StudioNet Address:** `0x43257a38E30eb0C522761992ee71C4Cb9f2A2338`
+- **Behavioral Reference Contract:** `contracts/AidTraceCore.sol` (EVM Solidity baseline, 19 passing tests preserved).
+- **Test Framework:** `pytest tests/direct/ -v` (10/10 passing tests via `genlayer-test`).
+- **Frontend Stack:** React 19 + Vite + TypeScript + Tailwind CSS + Lucide React.
+- **Client-Side Hashing:** Native Web Cryptography API (`crypto.subtle.digest`) for zero-dependency in-memory SHA-256 evidence verification.
 
 ---
 
-## 4. Next Phase: Phase 2 Kickoff
+## 4. Verification Commands
 
-With Phase 1 research and documentation completed, the project proceeds to **Phase 2: Smart Contract Core & Automated Unit Tests**.
+```bash
+# Run GenLayer Intelligent Contract Direct Tests
+npm run test:genlayer
+
+# Validate contract syntax & SDK semantics
+npm run lint:genlayer
+
+# Build production web application
+npm run build
+
+# Run Solidity EVM behavioral baseline tests
+npm run test:solidity
+```
