@@ -1,0 +1,28 @@
+{
+  "name": "aidtrace",
+  "version": "1.0.0",
+  "description": "Transparent Aid. Verifiable Impact. Web3 for Social Good Hackathon 2026.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "web3",
+    "aid",
+    "transparency",
+    "social-good",
+    "ethereum",
+    "base-sepolia"
+  ],
+  "author": "AidTrace Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@types/node": "^20.11.0",
+    "hardhat": "^2.22.2",
+    "typescript": "^5.4.5"
+  }
+}
