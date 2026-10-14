@@ -13,7 +13,7 @@ export const App: React.FC = () => {
     hash: string;
     title: string;
   }>({
-    hash: "0x70f20de1d9de31c6c4eb330538123c5b0ce719d394bc28e67025f6ff5df1e9e9",
+    hash: "0x0270319b919a2e140fad2facea59b39f6ee0738f81fb9c47008e579f2b59cc16",
     title: "Procurement & Dispatch of 3 Solar Pumping Units (Turkana Project)",
   });
 

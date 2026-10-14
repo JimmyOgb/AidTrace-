@@ -76,7 +76,7 @@ export const INITIAL_PROJECTS: ProjectData[] = [
         title: "Procurement & Dispatch of 3 Solar Pumping Units (Scenario Benchmark)",
         targetOutcome: "Staged at regional logistics depot (Illustrative Target)",
         allocationAmount: "2.0 ETH",
-        evidenceHash: "0x70f20de1d9de31c6c4eb330538123c5b0ce719d394bc28e67025f6ff5df1e9e9",
+        evidenceHash: "0x0270319b919a2e140fad2facea59b39f6ee0738f81fb9c47008e579f2b59cc16",
         metadataUri: "ipfs://bafybeifc7x2pq6vquc4l7a57a3e36lscw5b7vcfov4c34a66a7bexample",
         status: "VERIFIED",
         assessmentStatus: "ASSESSED_SATISFACTORY",
