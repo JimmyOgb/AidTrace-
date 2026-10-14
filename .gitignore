@@ -20,6 +20,7 @@ out/
 .env.*.local
 *.pem
 *.key
+.vercel/
 
 # Logs
 *.log

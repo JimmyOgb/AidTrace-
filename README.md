@@ -23,6 +23,7 @@
 
 ## 2. Documentation Suite
 
+- [**3-Minute Hackathon Demonstration Runbook**](./docs/DEMO_RUNBOOK.md): Turnkey recording script, scene breakdown, live verification commands, and judging criteria audit.
 - [**GenLayer StudioNet Migration Mapping**](./docs/GENLAYER_MIGRATION_MAPPING.md): Detailed architectural translation from Solidity EVM to GenLayer Python Intelligent Contracts.
 - [**Hackathon Requirements & Compliance**](./docs/HACKATHON_REQUIREMENTS.md): Rules confirmation, judging criteria mapping, confirmed facts vs. assumptions, and submission checklist.
 - [**Project Scope & Problem Specification**](./docs/PROJECT_SCOPE.md): Problem definition, stakeholder user journeys, on-chain vs. off-chain boundaries, and MVP scope.
