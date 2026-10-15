@@ -1,98 +1,153 @@
 import React, { useState } from "react";
-import { ShieldCheck, Menu, X, ExternalLink } from "lucide-react";
+import { Wallet, Menu, X, Check, ExternalLink } from "lucide-react";
+import { AidTraceLogo, GenLayerLogo } from "./Icons";
 import { GENLAYER_CONFIG } from "../utils/genlayer";
 
 interface NavbarProps {
+  activeTab: string;
   onNavigate: (sectionId: string) => void;
-  activeSection?: string;
+  onOpenWalletModal: () => void;
+  walletConnected?: boolean;
+  walletAddress?: string;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const Navbar: React.FC<NavbarProps> = ({
+  activeTab,
+  onNavigate,
+  onOpenWalletModal,
+  walletConnected = false,
+  walletAddress = "0x27D5...fe47",
+}) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
+    { label: "Home", id: "home" },
     { label: "Projects", id: "projects" },
-    { label: "Transactions", id: "transactions" },
     { label: "Verify Evidence", id: "verifier" },
     { label: "For Reviewers", id: "reviewers" },
     { label: "About", id: "about" },
   ];
 
-  const handleLinkClick = (id: string) => {
+  const handleNavClick = (id: string) => {
     onNavigate(id);
-    setIsOpen(false);
+    setMobileMenuOpen(false);
   };
 
   return (
-    <header className="fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center w-full px-4 max-w-4xl">
-      {/* Centered Floating Pill */}
-      <nav aria-label="Main navigation" className="w-full bg-[#091818]/90 backdrop-blur-md rounded-full shadow-2xl px-4 sm:px-6 py-2.5 flex items-center justify-between border border-teal-500/20">
-        <button
-          onClick={() => handleLinkClick("hero")}
-          className="flex items-center gap-2 text-left focus:outline-none group"
-          aria-label="AidTrace Home"
+    <header className="absolute top-0 left-0 w-full z-40 bg-gradient-to-b from-[#041315]/95 via-[#041315]/80 to-transparent">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        {/* Brand Logo & Subtitle */}
+        <div
+          onClick={() => handleNavClick("home")}
+          className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-300 border border-teal-500/40 group-hover:scale-105 transition-transform">
-            <ShieldCheck size={16} />
+          <div className="transition-transform group-hover:scale-105">
+            <AidTraceLogo size={36} />
           </div>
-          <span className="text-base sm:text-lg font-bold tracking-tight text-white">AidTrace.</span>
-        </button>
+          <div className="flex flex-col">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-none">
+              AidTrace
+            </span>
+            <span className="text-[10px] text-slate-300 font-normal tracking-wide mt-1 leading-none">
+              Transparent Aid. Verifiable Impact.
+            </span>
+          </div>
+        </div>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-1 sm:gap-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleLinkClick(item.id)}
-              className="px-3 py-1.5 text-xs font-medium text-white/70 hover:text-white hover:bg-white/5 rounded-full transition-colors"
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <nav className="hidden md:flex items-center gap-8">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`text-sm font-medium transition-all relative py-1 focus:outline-none ${
+                  isActive
+                    ? "text-white font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2.5px] after:bg-[#00d084] after:rounded-full"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
 
-        {/* Live StudioNet Indicator Tag & Mobile Hamburger */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[11px] font-semibold border border-emerald-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="hidden sm:inline">StudioNet</span>
-            <span>61999</span>
+        {/* Right Section: GenLayer StudioNet Pill & Connect Wallet */}
+        <div className="hidden lg:flex items-center gap-3.5">
+          {/* GenLayer StudioNet Badge */}
+          <div className="bg-[#0b2434]/80 hover:bg-[#0e2c40]/90 border border-sky-400/40 rounded-2xl px-3.5 py-1.5 flex items-center gap-2.5 backdrop-blur-md shadow-md transition-colors cursor-default">
+            <div className="text-sky-300">
+              <GenLayerLogo size={18} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-[11px] font-bold text-white leading-tight">
+                GenLayer StudioNet
+              </span>
+              <div className="flex items-center gap-1.5 leading-tight">
+                <span className="text-[10px] text-sky-200/80">Chain ID: 61999</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00d084] animate-pulse"></span>
+              </div>
+            </div>
           </div>
 
+          {/* Connect Wallet Button */}
           <button
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Toggle navigation menu"
-            aria-expanded={isOpen}
-            className="md:hidden w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-white transition-colors focus:outline-none"
+            onClick={onOpenWalletModal}
+            className="bg-[#071e2e] hover:bg-[#0a293d] active:scale-[0.98] border border-sky-400/40 text-white rounded-xl px-4 py-2 text-xs font-semibold flex items-center gap-2 transition-all shadow-md focus:outline-none"
           >
-            {isOpen ? <X size={18} /> : <Menu size={18} />}
+            <Wallet size={15} className="text-sky-300" />
+            <span>{walletConnected ? walletAddress : "Connect Wallet"}</span>
           </button>
         </div>
-      </nav>
 
-      {/* Mobile Dropdown Menu */}
-      {isOpen && (
-        <div className="w-full mt-2 bg-[#091818]/95 backdrop-blur-xl rounded-2xl shadow-2xl p-3 border border-teal-500/20 flex flex-col gap-1 md:hidden animate-in fade-in slide-in-from-top-2 duration-150">
+        {/* Mobile Hamburger Button */}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={onOpenWalletModal}
+            className="bg-[#071e2e] border border-sky-400/40 text-white rounded-xl px-2.5 py-1.5 text-xs font-medium flex items-center gap-1.5"
+          >
+            <Wallet size={14} className="text-sky-300" />
+            <span>{walletConnected ? "Connected" : "Wallet"}</span>
+          </button>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-slate-200 hover:text-white rounded-xl hover:bg-white/10 transition-colors focus:outline-none"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden bg-[#05171b]/95 backdrop-blur-xl border-b border-teal-500/20 px-6 py-4 flex flex-col gap-3 shadow-2xl">
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => handleLinkClick(item.id)}
-              className="px-4 py-2.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-colors text-left flex items-center justify-between"
+              onClick={() => handleNavClick(item.id)}
+              className="text-left py-2 text-sm font-medium text-slate-200 hover:text-white transition-colors flex items-center justify-between"
             >
               <span>{item.label}</span>
+              {activeTab === item.id && (
+                <span className="w-2 h-2 rounded-full bg-[#00d084]"></span>
+              )}
             </button>
           ))}
-          <div className="my-1 border-t border-white/10"></div>
-          <div className="px-4 py-2 flex items-center justify-between text-[11px] text-white/50 font-mono">
-            <span>GenLayer Chain 61999</span>
+          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-300">
+            <div className="flex items-center gap-1.5">
+              <GenLayerLogo size={14} />
+              <span>StudioNet 61999</span>
+            </div>
             <a
               href={GENLAYER_CONFIG.explorerUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-teal-400 hover:underline flex items-center gap-1"
+              className="text-[#00d084] hover:underline flex items-center gap-1"
             >
-              <span>Explorer</span>
-              <ExternalLink size={10} />
+              Explorer <ExternalLink size={10} />
             </a>
           </div>
         </div>

@@ -1,31 +1,77 @@
 import React, { useState } from "react";
 import { Navbar } from "./components/Navbar";
-import { AboutSection } from "./components/AboutSection";
-import { FeaturesSection } from "./components/FeaturesSection";
-import { ProjectExplorer } from "./components/ProjectExplorer";
-import { TransactionCenter } from "./components/TransactionCenter";
-import { EvidenceHasher } from "./components/EvidenceHasher";
-import { ReviewerConsole } from "./components/ReviewerConsole";
-import { INITIAL_PROJECTS, MilestoneData, GENLAYER_CONFIG, TransactionRecord } from "./utils/genlayer";
-import { ArrowRight, ShieldCheck, Sparkles, ExternalLink, Activity, Send } from "lucide-react";
+import { FourFeatureCards } from "./components/FourFeatureCards";
+import { LiveProjectsSection } from "./components/LiveProjectsSection";
+import { VerifyEvidenceSection } from "./components/VerifyEvidenceSection";
+import { WatchDemoModal } from "./components/WatchDemoModal";
+import { WalletModal } from "./components/WalletModal";
+import { AllProjectsModal } from "./components/AllProjectsModal";
+import { ReviewerModal } from "./components/ReviewerModal";
+import { AboutModal } from "./components/AboutModal";
+import { TransactionCenterModal } from "./components/TransactionCenterModal";
+import { GenLayerLogo } from "./components/Icons";
+import { INITIAL_PROJECTS, MilestoneData, GENLAYER_CONFIG } from "./utils/genlayer";
+import { ArrowRight, Play, Sparkles, Send } from "lucide-react";
 
 export const App: React.FC = () => {
-  const [selectedMilestone, setSelectedMilestone] = useState<{
-    hash: string;
-    title: string;
-  }>({
-    hash: "0x0270319b919a2e140fad2facea59b39f6ee0738f81fb9c47008e579f2b59cc16",
-    title: "Procurement & Dispatch of 3 Solar Pumping Units (Turkana Project)",
-  });
+  const [activeTab, setActiveTab] = useState<string>("home");
 
-  const [transactionTargetProjectId, setTransactionTargetProjectId] = useState<number>(1);
-  const [transactionTargetMilestoneId, setTransactionTargetMilestoneId] = useState<number>(1);
+  // Modals state
+  const [isDemoOpen, setIsDemoOpen] = useState<boolean>(false);
+  const [isWalletOpen, setIsWalletOpen] = useState<boolean>(false);
+  const [isAllProjectsOpen, setIsAllProjectsOpen] = useState<boolean>(false);
+  const [isReviewerOpen, setIsReviewerOpen] = useState<boolean>(false);
+  const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
+  const [isTransactionOpen, setIsTransactionOpen] = useState<boolean>(false);
+
+  // Wallet session simulation
+  const [walletConnected, setWalletConnected] = useState<boolean>(true);
+  const [walletAddress, setWalletAddress] = useState<string>(
+    "0x27D56637e172e9d288a4e8d35d1ea8dcd370fe47"
+  );
+
+  // Selected state for cross-component interactions
+  const [targetProjectId, setTargetProjectId] = useState<number>(1);
+  const [targetMilestoneId, setTargetMilestoneId] = useState<number>(1);
   const [activeEvidenceHash, setActiveEvidenceHash] = useState<string>("");
 
   const scrollTo = (id: string) => {
+    if (id === "home") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setActiveTab("home");
+      return;
+    }
+
+    if (id === "reviewers") {
+      setIsReviewerOpen(true);
+      setActiveTab("reviewers");
+      return;
+    }
+
+    if (id === "about") {
+      setIsAboutOpen(true);
+      setActiveTab("about");
+      return;
+    }
+
+    if (id === "projects") {
+      setActiveTab("projects");
+      const el = document.getElementById("projects");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
+    if (id === "verifier") {
+      setActiveTab("verifier");
+      const el = document.getElementById("verifier");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
+
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: "smooth" });
+      setActiveTab(id);
     }
   };
 
@@ -33,188 +79,204 @@ export const App: React.FC = () => {
     milestone: MilestoneData,
     projectTitle: string
   ) => {
-    setSelectedMilestone({
-      hash: milestone.evidenceHash,
-      title: `${milestone.title} (${projectTitle})`,
-    });
+    setActiveEvidenceHash(milestone.evidenceHash);
     scrollTo("verifier");
   };
 
-  const handleSelectProjectForTransaction = (projectId: number) => {
-    setTransactionTargetProjectId(projectId);
-    scrollTo("transactions");
+  const handleOpenTransactionForProject = (projectId: number) => {
+    setTargetProjectId(projectId);
+    setIsTransactionOpen(true);
+  };
+
+  const handleOpenReviewerAction = (
+    projectId: number,
+    milestoneId: number,
+    outcome: string
+  ) => {
+    setTargetProjectId(projectId);
+    setTargetMilestoneId(milestoneId);
+    setIsTransactionOpen(true);
   };
 
   const handleUseHashInTransaction = (hash: string) => {
     setActiveEvidenceHash(hash);
-    scrollTo("transactions");
-  };
-
-  const handleOpenReviewerAction = (projectId: number, milestoneId: number, outcome: string) => {
-    setTransactionTargetProjectId(projectId);
-    setTransactionTargetMilestoneId(milestoneId);
-    scrollTo("transactions");
+    setIsTransactionOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#070f14] text-white flex flex-col font-sans selection:bg-teal-500 selection:text-black">
-      {/* Floating Pill Navbar */}
-      <Navbar onNavigate={scrollTo} />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans selection:bg-[#00d084] selection:text-black">
+      {/* SECTION 1: HERO & NAVBAR (Dark Humanitarian Theme) */}
+      <div className="relative bg-[#041315] min-h-[540px] sm:min-h-[580px] lg:min-h-[620px] overflow-hidden flex flex-col justify-between">
+        {/* Real Humanitarian Photograph on Right Side */}
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-[60%] pointer-events-none z-0">
+          <picture>
+            <source srcSet="/hero-clean-final.png" type="image/png" />
+            <img
+              src="/hero-clean-final.png"
+              alt="AidTrace Humanitarian Logistics"
+              className="w-full h-full object-cover object-right-top opacity-90 lg:opacity-100"
+              loading="eager"
+            />
+          </picture>
+          {/* Gradients blending photograph into dark hero background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#041315] via-[#041315]/70 to-transparent lg:block hidden" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#041315] via-transparent to-transparent lg:hidden block" />
+          <div className="absolute inset-0 bg-[#041315]/30 lg:hidden block" />
+        </div>
 
-      {/* SECTION 1: HERO (Humanitarian Design with Local Image) */}
-      <header
-        id="hero"
-        className="relative min-h-[92vh] md:min-h-screen overflow-hidden flex flex-col justify-end pt-28 pb-16 md:pb-24"
-      >
-        {/* Real Humanitarian Photograph Background */}
-        <picture className="absolute inset-0 w-full h-full">
-          <source srcSet="/hero-humanitarian.png" type="image/png" />
-          <img
-            src="/hero-humanitarian.png"
-            alt="Humanitarian community aid delivery and clean water distribution"
-            className="w-full h-full object-cover object-center transform scale-105 motion-safe:transition-transform motion-safe:duration-1000"
-            loading="eager"
-          />
-        </picture>
+        {/* Global Navigation Bar */}
+        <Navbar
+          activeTab={activeTab}
+          onNavigate={scrollTo}
+          onOpenWalletModal={() => setIsWalletOpen(true)}
+          walletConnected={walletConnected}
+          walletAddress={`${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+        />
 
-        {/* Multi-Stop Readability Dark Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#070f14] via-[#070f14]/75 to-[#070f14]/40" />
-        <div className="absolute inset-0 bg-black/35 backdrop-blur-[1px]" />
+        {/* Hero Left Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-28 sm:pt-32 pb-16 sm:pb-20 flex flex-col items-start justify-center">
+          <div className="max-w-xl flex flex-col items-start">
+            {/* Hackathon Track Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#062423]/90 border border-emerald-500/40 text-emerald-300 text-xs font-semibold backdrop-blur-md mb-6 shadow-md">
+              <GenLayerLogo size={14} className="text-emerald-400" />
+              <span>Web3 for Social Good Hackathon 2026 • Tech Track</span>
+            </div>
 
-        {/* Hero Content */}
-        <div className="relative z-10 max-w-5xl mx-auto px-6 flex flex-col items-center text-center gap-6">
-          {/* Subtle Tagline Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-950/80 backdrop-blur-md border border-teal-500/30 text-teal-200 text-xs font-medium shadow-xl">
-            <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-            <span>GenLayer StudioNet Testnet • Gasless Chain 61999</span>
-          </div>
+            {/* Main Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-[58px] font-black text-white tracking-tight leading-[1.08]">
+              Transparent Aid.
+              <br />
+              <span className="text-[#00d084]">Verifiable Impact.</span>
+            </h1>
 
-          {/* Heading */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-[84px] font-normal text-white leading-[1.08] tracking-tight max-w-4xl">
-            Transparent Aid.{" "}
-            <span
-              className="not-italic font-serif text-teal-300 block sm:inline"
-              style={{
-                fontFamily: "'Instrument Serif', serif",
-                fontStyle: "italic",
-              }}
-            >
-              Verifiable Impact.
-            </span>
-          </h1>
+            {/* Subtitle */}
+            <p className="text-slate-200 text-sm sm:text-base mt-4 leading-relaxed font-normal">
+              AidTrace uses GenLayer's intelligent contracts and AI consensus to bring
+              transparency, accountability and real-world verification to humanitarian aid.
+            </p>
 
-          {/* Supporting Copy */}
-          <p className="text-white/90 text-sm sm:text-base md:text-lg font-normal max-w-2xl leading-relaxed drop-shadow-md">
-            Follow aid projects from their stated goals to recorded progress and independently reviewable evidence.
-            Every claim should have a clear status and an auditable trail.
-          </p>
+            {/* Action Buttons */}
+            <div className="mt-8 flex flex-wrap items-center gap-4 w-full sm:w-auto">
+              <button
+                onClick={() => scrollTo("projects")}
+                className="bg-[#00d084] hover:bg-[#00ba76] active:scale-[0.98] text-slate-950 text-sm font-bold px-7 py-3 rounded-full transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2"
+              >
+                <span>Explore Live Projects</span>
+                <ArrowRight size={16} />
+              </button>
 
-          {/* Dual Action CTAs */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            {/* Primary CTA */}
-            <button
-              onClick={() => scrollTo("projects")}
-              className="w-full sm:w-auto bg-teal-500 hover:bg-teal-400 text-black text-sm font-semibold px-8 py-3.5 rounded-2xl transition-all shadow-xl hover:shadow-teal-500/25 flex items-center justify-center gap-2.5 group"
-            >
-              <span>Explore Projects</span>
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            {/* Secondary CTA */}
-            <button
-              onClick={() => scrollTo("transactions")}
-              className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-8 py-3.5 rounded-2xl backdrop-blur-md border border-white/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Send size={15} className="text-teal-300" />
-              <span>Record an On-Chain Update</span>
-            </button>
-          </div>
-
-          {/* Micro Honesty Disclosure */}
-          <div className="mt-2 text-[11px] text-white/50 flex items-center gap-2 font-mono">
-            <span>Contract: 0x4325...2338</span>
-            <span>•</span>
-            <span>Zero-Dollar Public Good Submission</span>
+              <button
+                onClick={() => setIsDemoOpen(true)}
+                className="bg-[#0a1e26]/85 hover:bg-[#0f2c38] active:scale-[0.98] text-white border border-white/30 text-sm font-semibold px-6 py-3 rounded-full transition-all backdrop-blur-md flex items-center justify-center gap-2"
+              >
+                <Play size={15} className="fill-white" />
+                <span>Watch Demo</span>
+              </button>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* SECTION 2: ABOUT / ETHICAL MISSION SECTION */}
-      <AboutSection
+        {/* Hero bottom spacer */}
+        <div className="h-6"></div>
+      </div>
+
+      {/* SECTION 2: FOUR FEATURE CARDS (Banner Overlapping Seam) */}
+      <FourFeatureCards />
+
+      {/* SECTION 3: TWO-COLUMN MAIN CONTENT (Live Projects & Verify Evidence) */}
+      <main className="flex-1 bg-[#f8fafc] py-10 sm:py-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column (7 cols): Live Projects */}
+            <div className="lg:col-span-7">
+              <LiveProjectsSection
+                projects={INITIAL_PROJECTS}
+                onOpenAllProjectsModal={() => setIsAllProjectsOpen(true)}
+                onSelectMilestoneForVerification={handleSelectMilestoneForVerification}
+                onOpenTransactionAction={handleOpenTransactionForProject}
+              />
+            </div>
+
+            {/* Right Column (5 cols): Verify Evidence */}
+            <div className="lg:col-span-5">
+              <VerifyEvidenceSection
+                onUseHashInTransaction={handleUseHashInTransaction}
+              />
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* SECTION 4: DARK FOOTER (Matching Mockup Bottom Bar) */}
+      <footer className="bg-[#071318] border-t border-slate-800 text-slate-400 py-4 px-4 sm:px-8 text-xs select-none">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Left: GenLayer Brand */}
+          <div className="flex items-center gap-2 text-slate-300 font-medium">
+            <div className="text-teal-400">
+              <GenLayerLogo size={16} />
+            </div>
+            <span>Powered by GenLayer StudioNet</span>
+          </div>
+
+          {/* Center: Hackathon Info */}
+          <div className="text-slate-400 text-center font-normal">
+            Web3 for Social Good Hackathon 2026 • Tech Track
+          </div>
+
+          {/* Right: StudioNet Network Status */}
+          <div className="flex items-center gap-2 text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-[#00d084] animate-pulse"></span>
+            <span>Network: StudioNet (Chain ID 61999)</span>
+          </div>
+        </div>
+      </footer>
+
+      {/* MODALS & DRAWERS */}
+      <WatchDemoModal
+        isOpen={isDemoOpen}
+        onClose={() => setIsDemoOpen(false)}
+        onOpenVerifier={() => scrollTo("verifier")}
+        onOpenTransactionCenter={() => setIsTransactionOpen(true)}
+      />
+
+      <WalletModal
+        isOpen={isWalletOpen}
+        onClose={() => setIsWalletOpen(false)}
+        isConnected={walletConnected}
+        address={walletAddress}
+        onConnect={() => setWalletConnected(true)}
+        onDisconnect={() => setWalletConnected(false)}
+      />
+
+      <AllProjectsModal
+        isOpen={isAllProjectsOpen}
+        onClose={() => setIsAllProjectsOpen(false)}
+        projects={INITIAL_PROJECTS}
+        onSelectMilestoneForVerification={handleSelectMilestoneForVerification}
+        onSelectProjectForTransaction={handleOpenTransactionForProject}
+      />
+
+      <ReviewerModal
+        isOpen={isReviewerOpen}
+        onClose={() => setIsReviewerOpen(false)}
+        onOpenTransactionAction={handleOpenReviewerAction}
+      />
+
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
         onExploreProjects={() => scrollTo("projects")}
         onOpenVerifier={() => scrollTo("verifier")}
       />
 
-      {/* SECTION 3: FEATURES (Scroll-driven cards) */}
-      <FeaturesSection onExploreProjects={() => scrollTo("projects")} />
-
-      {/* SECTION 4: INTERACTIVE PROJECT EXPLORER */}
-      <div className="bg-[#09151b] border-t border-teal-500/10">
-        <ProjectExplorer
-          projects={INITIAL_PROJECTS}
-          onSelectMilestoneForVerification={handleSelectMilestoneForVerification}
-          onSelectProjectForTransaction={handleSelectProjectForTransaction}
-        />
-      </div>
-
-      {/* SECTION 5: REAL TRANSACTION CENTER */}
-      <div className="bg-[#0b171f] border-t border-teal-500/15">
-        <TransactionCenter
-          initialProjectId={transactionTargetProjectId}
-          initialMilestoneId={transactionTargetMilestoneId}
-          initialEvidenceHash={activeEvidenceHash}
-        />
-      </div>
-
-      {/* SECTION 6: EVIDENCE INTEGRITY CHECKER */}
-      <div className="bg-[#081219] py-16 px-6 border-t border-teal-500/10">
-        <EvidenceHasher
-          expectedHash={selectedMilestone.hash}
-          milestoneTitle={selectedMilestone.title}
-          onUseHashInTransaction={handleUseHashInTransaction}
-        />
-      </div>
-
-      {/* SECTION 7: REVIEWER PORTAL CONSOLE */}
-      <div className="bg-[#09151b] py-16 px-6 border-t border-teal-500/10">
-        <ReviewerConsole onOpenTransactionAction={handleOpenReviewerAction} />
-      </div>
-
-      {/* FOOTER */}
-      <footer className="bg-black py-14 px-6 border-t border-white/10 text-white/60 text-xs">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5 text-white font-bold text-base">
-            <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 border border-teal-500/40">
-              <ShieldCheck size={16} />
-            </div>
-            <span>AidTrace.</span>
-            <span className="text-white/40 text-xs font-normal">Transparent Aid. Verifiable Impact.</span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8 text-center sm:text-right">
-            <div>
-              <span className="block text-white/80 font-medium">GenLayer StudioNet (Chain ID: 61999)</span>
-              <span className="font-mono text-[11px] text-teal-400">
-                Contract: {GENLAYER_CONFIG.contractAddress}
-              </span>
-            </div>
-            <a
-              href={GENLAYER_CONFIG.explorerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-white hover:text-teal-300 transition-colors flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10"
-            >
-              <span>StudioNet Explorer</span>
-              <ExternalLink size={12} />
-            </a>
-          </div>
-        </div>
-
-        <div className="max-w-6xl mx-auto mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-white/40">
-          <span>Web3 for Social Good Hackathon 2026 • Tech Track Submission • Strictly $0 Budget</span>
-          <span>Humility in Cryptography: Hashes prove data integrity, not physical reality.</span>
-        </div>
-      </footer>
+      <TransactionCenterModal
+        isOpen={isTransactionOpen}
+        onClose={() => setIsTransactionOpen(false)}
+        initialProjectId={targetProjectId}
+        initialMilestoneId={targetMilestoneId}
+        initialEvidenceHash={activeEvidenceHash}
+      />
     </div>
   );
 };
+export default App;
