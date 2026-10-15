@@ -8,6 +8,7 @@
     "preview": "vite preview",
     "test": "pytest tests/direct/ -v",
     "test:genlayer": "pytest tests/direct/ -v",
+    "test:frontend": "node --test tests/frontend/*.test.mjs",
     "test:solidity": "hardhat test",
     "lint:genlayer": "genvm-lint check contracts/aid_trace.py --json",
     "compile:solidity": "hardhat compile",

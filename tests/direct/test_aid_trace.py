@@ -262,3 +262,73 @@ def test_audit_trail_recording(direct_vm, direct_deploy, direct_owner, direct_al
     assert audit_trail[0]["type"] == "CONTRACT_INITIALIZED"
     assert audit_trail[1]["type"] == "PROJECT_CREATED"
     assert audit_trail[1]["payload"]["project_id"] == 1
+
+
+def test_invalid_evidence_hash_and_tamper_prevention(direct_vm, direct_deploy, direct_alice):
+    contract = direct_deploy("contracts/aid_trace.py")
+    direct_vm.sender = direct_alice
+    contract.create_project("Water Filter Kits", "Desc", "Region", "5 ETH", 100, "Outcomes")
+    contract.add_milestone(1, "Procurement", "50 filters", "2 ETH")
+
+    # Empty hash reverts
+    with direct_vm.expect_revert("Valid non-zero evidence hash is required"):
+        contract.submit_milestone_evidence(1, 1, "", "ipfs://doc")
+
+    # 0x0 hash reverts
+    with direct_vm.expect_revert("Valid non-zero evidence hash is required"):
+        contract.submit_milestone_evidence(1, 1, "0x0", "ipfs://doc")
+
+    # All-zero 64-char hash reverts
+    with direct_vm.expect_revert("Valid non-zero evidence hash is required"):
+        contract.submit_milestone_evidence(1, 1, "0" * 64, "ipfs://doc")
+
+
+def test_funding_record_accounting_and_non_active_guard(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract = direct_deploy("contracts/aid_trace.py")
+    direct_vm.sender = direct_alice
+    contract.create_project("Solar Clinics", "Desc", "Region", "10 ETH", 200, "Outcomes")
+
+    # Alice pauses project
+    contract.set_project_status(1, "PAUSED")
+    assert contract.get_project(1)["status"] == "PAUSED"
+
+    # Bob attempts funding on paused project -> Reverts
+    direct_vm.sender = direct_bob
+    with direct_vm.expect_revert("Project 1 is not ACTIVE"):
+        contract.record_funding(1, "1.0", to_hex(direct_bob))
+
+    # Reactivate and verify accounting accumulation
+    direct_vm.sender = direct_alice
+    contract.set_project_status(1, "ACTIVE")
+    direct_vm.sender = direct_bob
+    contract.record_funding(1, "3.5", to_hex(direct_bob))
+    contract.record_funding(1, "1.5", to_hex(direct_bob))
+
+    project = contract.get_project(1)
+    assert float(project["total_received"]) == 5.0
+    assert project["target_funding"] == "10 ETH"
+
+
+def test_multiple_milestones_and_state_consistency(direct_vm, direct_deploy, direct_alice):
+    contract = direct_deploy("contracts/aid_trace.py")
+    direct_vm.sender = direct_alice
+    contract.create_project("Logistics Pipeline", "Desc", "Region", "20 ETH", 500, "Outcomes")
+
+    m1 = contract.add_milestone(1, "Phase 1 Logistics", "Warehousing", "5 ETH")
+    m2 = contract.add_milestone(1, "Phase 2 Delivery", "Ground Transport", "10 ETH")
+    m3 = contract.add_milestone(1, "Phase 3 Handover", "Community sign-off", "5 ETH")
+
+    assert m1 == 1
+    assert m2 == 2
+    assert m3 == 3
+
+    all_milestones = contract.get_project_milestones(1)
+    assert len(all_milestones) == 3
+    assert all_milestones[0]["title"] == "Phase 1 Logistics"
+    assert all_milestones[1]["title"] == "Phase 2 Delivery"
+    assert all_milestones[2]["title"] == "Phase 3 Handover"
+
+    # Nonexistent milestone query reverts
+    with direct_vm.expect_revert("Milestone 99 does not exist"):
+        contract.get_milestone(1, 99)
+

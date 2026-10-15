@@ -1,38 +1,42 @@
 import React, { useState } from "react";
-import { UserCheck, ShieldAlert, Sparkles, CheckCircle2, XCircle, AlertTriangle, Send } from "lucide-react";
+import {
+  UserCheck,
+  ShieldAlert,
+  Sparkles,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
+  Send,
+  Lock,
+} from "lucide-react";
 import { GENLAYER_CONFIG } from "../utils/genlayer";
 
 interface ReviewerConsoleProps {
-  onAttestationComplete?: (projectId: number, milestoneId: number, outcome: string) => void;
+  onOpenTransactionAction?: (projectId: number, milestoneId: number, outcome: string) => void;
 }
 
-export const ReviewerConsole: React.FC<ReviewerConsoleProps> = () => {
+export const ReviewerConsole: React.FC<ReviewerConsoleProps> = ({
+  onOpenTransactionAction,
+}) => {
   const [projectId, setProjectId] = useState<number>(1);
   const [milestoneId, setMilestoneId] = useState<number>(2);
   const [reviewOutcome, setReviewOutcome] = useState<"VERIFIED" | "REJECTED" | "DISPUTED">("VERIFIED");
-  const [rationale, setRationale] = useState<string>("Hydrological well flow test logs inspected against certified NGO ground report.");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [attestationSuccess, setAttestationSuccess] = useState<boolean>(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLaunchTransaction = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setAttestationSuccess(false);
-
-    // Simulate signing & submitting review attestation to GenLayer contract
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setAttestationSuccess(true);
-    }, 1200);
+    if (onOpenTransactionAction) {
+      onOpenTransactionAction(projectId, milestoneId, reviewOutcome);
+    }
   };
 
   return (
-    <div className="bg-[#202024] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl text-white max-w-4xl mx-auto my-12">
+    <section id="reviewers" className="bg-[#18181B] rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl text-white max-w-4xl mx-auto my-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/10">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold mb-2 border border-emerald-500/20">
             <UserCheck size={14} />
-            <span>Authorized Reviewer Portal</span>
+            <span>Authorized Field Reviewer Portal</span>
           </div>
           <h3 className="text-xl sm:text-2xl font-bold">
             Field Reviewer Attestation Console
@@ -44,11 +48,37 @@ export const ReviewerConsole: React.FC<ReviewerConsoleProps> = () => {
 
         <div className="bg-black/30 px-3.5 py-2 rounded-xl border border-white/5 text-right font-mono text-xs">
           <span className="text-[10px] text-white/40 uppercase tracking-wider block">Contract Address</span>
-          <span className="text-emerald-400">{GENLAYER_CONFIG.contractAddress.slice(0, 8)}...{GENLAYER_CONFIG.contractAddress.slice(-6)}</span>
+          <span className="text-emerald-400">
+            {GENLAYER_CONFIG.contractAddress.slice(0, 8)}...{GENLAYER_CONFIG.contractAddress.slice(-6)}
+          </span>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* Separation of Powers Banner */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-black/40 border border-purple-500/20 rounded-2xl p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-purple-300 font-semibold text-xs">
+            <Sparkles size={14} />
+            <span>1. GenLayer AI Criteria Assessment</span>
+          </div>
+          <p className="text-xs text-white/60 leading-relaxed">
+            Validators evaluate non-deterministic consensus to verify if document claims match stated milestone targets.
+            <strong> AI consensus can never finalize milestones or authorize funding.</strong>
+          </p>
+        </div>
+
+        <div className="bg-black/40 border border-emerald-500/20 rounded-2xl p-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+            <UserCheck size={14} />
+            <span>2. Authorized Human Reviewer Attestation</span>
+          </div>
+          <p className="text-xs text-white/60 leading-relaxed">
+            Only identified, authorized human field auditors with role-based access can attest that goods/services physically arrived on the ground.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleLaunchTransaction} className="flex flex-col gap-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-semibold text-white/60 uppercase tracking-wider block mb-2">
@@ -56,6 +86,7 @@ export const ReviewerConsole: React.FC<ReviewerConsoleProps> = () => {
             </label>
             <input
               type="number"
+              min="1"
               value={projectId}
               onChange={(e) => setProjectId(Number(e.target.value))}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
@@ -69,6 +100,7 @@ export const ReviewerConsole: React.FC<ReviewerConsoleProps> = () => {
             </label>
             <input
               type="number"
+              min="1"
               value={milestoneId}
               onChange={(e) => setMilestoneId(Number(e.target.value))}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
@@ -104,51 +136,19 @@ export const ReviewerConsole: React.FC<ReviewerConsoleProps> = () => {
           </div>
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-white/60 uppercase tracking-wider block mb-2">
-            Audit Rationale Statement
-          </label>
-          <textarea
-            rows={3}
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
-            placeholder="Explain inspection basis, invoice check, or physical delivery corroboration..."
-            required
-          />
-          <span className="text-[11px] text-white/40 mt-1 block">
-            A cryptographic SHA-256 fingerprint of this rationale is permanently committed to the GenLayer contract.
-          </span>
-        </div>
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-              <span>Broadcasting to StudioNet Validators...</span>
-            </>
-          ) : (
-            <>
-              <Send size={16} />
-              <span>Submit Attestation to StudioNet</span>
-            </>
-          )}
-        </button>
-
-        {attestationSuccess && (
-          <div className="mt-2 bg-emerald-500/15 border border-emerald-500/30 p-4 rounded-2xl flex items-center gap-3 text-emerald-300 text-sm">
-            <CheckCircle2 size={20} className="shrink-0" />
-            <div>
-              <strong>Attestation Accepted by Validators:</strong> Milestone #{milestoneId} updated to{" "}
-              <span className="font-bold underline">{reviewOutcome}</span> on GenLayer StudioNet.
-            </div>
+        <div className="bg-black/30 p-4 rounded-xl border border-white/5 flex items-center justify-between">
+          <div className="text-xs text-white/60">
+            Submissions are signed on-chain through the Transaction Center with input validation and receipt checking.
           </div>
-        )}
+          <button
+            type="submit"
+            className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs py-2.5 px-4 rounded-xl flex items-center gap-2 transition-colors shrink-0"
+          >
+            <span>Proceed in Transaction Center</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </form>
-    </div>
+    </section>
   );
 };

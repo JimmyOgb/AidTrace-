@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ProjectData, MilestoneData } from "../utils/genlayer";
+import { ProjectData, MilestoneData, GENLAYER_CONFIG } from "../utils/genlayer";
 import {
   ExternalLink,
   ChevronDown,
@@ -13,16 +13,21 @@ import {
   Clock,
   AlertCircle,
   FileCheck2,
+  Send,
+  ShieldCheck,
+  Activity,
 } from "lucide-react";
 
 interface ProjectExplorerProps {
   projects: ProjectData[];
   onSelectMilestoneForVerification?: (milestone: MilestoneData, projectTitle: string) => void;
+  onSelectProjectForTransaction?: (projectId: number) => void;
 }
 
 export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
   projects,
   onSelectMilestoneForVerification,
+  onSelectProjectForTransaction,
 }) => {
   const [expandedProjectId, setExpandedProjectId] = useState<number | null>(1);
 
@@ -67,20 +72,32 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
     <section id="projects" className="py-20 px-6 max-w-6xl mx-auto text-white">
       <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-10 pb-6 border-b border-white/10">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold mb-2 border border-emerald-500/20">
-            <span>Live Audit Ledger</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 text-xs font-semibold mb-2 border border-teal-500/20">
+            <Activity size={14} />
+            <span>Verified Registry</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-normal tracking-tight">
-            Aid Projects & <span className="font-serif italic text-amber-200">Verified Milestones</span>
+            Aid Projects & <span className="font-serif italic text-teal-300">Auditable Milestones</span>
           </h2>
           <p className="text-white/60 text-sm mt-1">
             Real on-chain initiatives deployed to GenLayer StudioNet. Never fabricated.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-white/50 bg-black/40 px-3.5 py-2 rounded-xl border border-white/5">
-          <span>Network:</span>
-          <span className="text-emerald-400 font-semibold">GenLayer StudioNet (61999)</span>
+        <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2 text-white/60 bg-black/40 px-3.5 py-2 rounded-xl border border-white/10">
+            <span>Network:</span>
+            <span className="text-emerald-400 font-semibold">GenLayer StudioNet (61999)</span>
+          </div>
+          <a
+            href={`${GENLAYER_CONFIG.explorerUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-teal-400 hover:text-teal-300 bg-teal-500/10 px-3 py-2 rounded-xl border border-teal-500/20 transition-colors"
+          >
+            <span>Explorer</span>
+            <ExternalLink size={12} />
+          </a>
         </div>
       </div>
 
@@ -94,7 +111,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
               key={project.id}
               className={`rounded-3xl border transition-all overflow-hidden ${
                 isStudioNet
-                  ? "bg-white/[0.04] border-emerald-500/30 shadow-xl"
+                  ? "bg-[#101b1b]/80 border-teal-500/30 shadow-xl"
                   : "bg-white/[0.02] border-white/10 opacity-90"
               }`}
             >
@@ -105,7 +122,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="text-xs font-mono text-white/40">#{project.id}</span>
+                    <span className="text-xs font-mono text-teal-400/80">#{project.id}</span>
                     <h3 className="text-xl sm:text-2xl font-semibold text-white">
                       {project.title}
                     </h3>
@@ -113,7 +130,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     {/* Network Source Pill */}
                     {isStudioNet ? (
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 text-xs font-medium border border-emerald-500/30 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         StudioNet On-Chain
                       </span>
                     ) : (
@@ -150,7 +167,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                 {/* Key Metrics Row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                   <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex items-center gap-2.5">
-                    <MapPin size={18} className="text-amber-400 shrink-0" />
+                    <MapPin size={18} className="text-teal-400 shrink-0" />
                     <div className="min-w-0">
                       <span className="text-[10px] text-white/40 uppercase tracking-wider block truncate">Location</span>
                       <span className="text-xs font-medium text-white truncate block">{project.coarse_location}</span>
@@ -185,6 +202,23 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Quick Action Button */}
+                {onSelectProjectForTransaction && (
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectProjectForTransaction(project.id);
+                      }}
+                      className="bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/30 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+                    >
+                      <Send size={13} />
+                      <span>Record On-Chain Action for Project #{project.id}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Expanded Milestones Section */}
@@ -207,7 +241,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-white/10 text-xs flex items-center justify-center font-bold">
+                            <span className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-300 text-xs flex items-center justify-center font-bold">
                               {m.id}
                             </span>
                             <span className="text-base font-medium text-white">{m.title}</span>
@@ -220,7 +254,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                                   e.stopPropagation();
                                   onSelectMilestoneForVerification(m, project.title);
                                 }}
-                                className="text-xs text-amber-300 hover:text-amber-200 underline font-medium ml-2"
+                                className="text-xs text-teal-300 hover:text-teal-200 underline font-medium ml-2"
                               >
                                 Test Integrity
                               </button>
@@ -258,7 +292,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                               <Sparkles size={14} />
                               <span>GenLayer Consensus Assessment</span>
                             </div>
-                            <p className="text-xs text-white/60">
+                            <p className="text-xs text-white/60 leading-relaxed">
                               {m.assessmentRationale || "Awaiting consensus evaluation against criteria."}
                             </p>
                           </div>
@@ -269,7 +303,7 @@ export const ProjectExplorer: React.FC<ProjectExplorerProps> = ({
                               <UserCheck size={14} />
                               <span>Field Reviewer Attestation</span>
                             </div>
-                            <p className="text-xs text-white/60">
+                            <p className="text-xs text-white/60 leading-relaxed">
                               {m.reviewer ? (
                                 <>
                                   Attested by:{" "}
