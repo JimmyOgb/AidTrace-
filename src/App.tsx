@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar";
 import { FourFeatureCards } from "./components/FourFeatureCards";
 import { LiveProjectsSection } from "./components/LiveProjectsSection";
@@ -9,9 +9,16 @@ import { AllProjectsModal } from "./components/AllProjectsModal";
 import { ReviewerModal } from "./components/ReviewerModal";
 import { AboutModal } from "./components/AboutModal";
 import { TransactionCenterModal } from "./components/TransactionCenterModal";
+import { CreateProjectModal } from "./components/CreateProjectModal";
 import { GenLayerLogo } from "./components/Icons";
-import { INITIAL_PROJECTS, MilestoneData, GENLAYER_CONFIG } from "./utils/genlayer";
-import { ArrowRight, Play, Sparkles, Send } from "lucide-react";
+import {
+  INITIAL_PROJECTS,
+  MilestoneData,
+  ProjectData,
+  GENLAYER_CONFIG,
+  fetchAllOnChainProjects,
+} from "./utils/genlayer";
+import { ArrowRight, Play, PlusCircle } from "lucide-react";
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("home");
@@ -23,17 +30,148 @@ export const App: React.FC = () => {
   const [isReviewerOpen, setIsReviewerOpen] = useState<boolean>(false);
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(false);
   const [isTransactionOpen, setIsTransactionOpen] = useState<boolean>(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState<boolean>(false);
 
-  // Wallet session simulation
-  const [walletConnected, setWalletConnected] = useState<boolean>(true);
-  const [walletAddress, setWalletAddress] = useState<string>(
-    "0x27D56637e172e9d288a4e8d35d1ea8dcd370fe47"
-  );
+  // Real Web3 Wallet Session
+  const [walletConnected, setWalletConnected] = useState<boolean>(false);
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+
+  // Project List (Live on-chain + clearly marked sample demos)
+  const [projects, setProjects] = useState<ProjectData[]>(INITIAL_PROJECTS);
 
   // Selected state for cross-component interactions
   const [targetProjectId, setTargetProjectId] = useState<number>(1);
   const [targetMilestoneId, setTargetMilestoneId] = useState<number>(1);
   const [activeEvidenceHash, setActiveEvidenceHash] = useState<string>("");
+
+  // Check injected wallet & load on-chain projects on mount
+  useEffect(() => {
+    const initSession = async () => {
+      // 1. Check existing wallet connection
+      const ethereum = (window as any).ethereum;
+      if (ethereum) {
+        try {
+          const accounts = await ethereum.request({ method: "eth_accounts" });
+          if (accounts && accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+            setWalletConnected(true);
+          }
+          const chainHex = await ethereum.request({ method: "eth_chainId" });
+          if (chainHex) {
+            setWalletChainId(parseInt(chainHex, 16));
+          }
+
+          // Listeners for account & network changes
+          const handleAccountsChanged = (newAccounts: string[]) => {
+            if (newAccounts.length > 0) {
+              setWalletAddress(newAccounts[0]);
+              setWalletConnected(true);
+            } else {
+              setWalletAddress("");
+              setWalletConnected(false);
+            }
+          };
+
+          const handleChainChanged = (newChainHex: string) => {
+            setWalletChainId(parseInt(newChainHex, 16));
+          };
+
+          ethereum.on("accountsChanged", handleAccountsChanged);
+          ethereum.on("chainChanged", handleChainChanged);
+        } catch (err) {
+          console.warn("[App] Error checking injected wallet session:", err);
+        }
+      }
+
+      // 2. Fetch live on-chain projects from StudioNet
+      try {
+        const liveOnChain = await fetchAllOnChainProjects();
+        if (liveOnChain.length > 0) {
+          // Preserve sample demonstration items with clear separation
+          const demoItems = INITIAL_PROJECTS.filter((p) => p.networkSource.includes("Sample"));
+          setProjects([...liveOnChain, ...demoItems]);
+        }
+      } catch (err) {
+        console.warn("[App] Could not load live on-chain projects; using cached initial data:", err);
+      }
+    };
+
+    initSession();
+  }, []);
+
+  // Connect wallet handler
+  const handleConnectWallet = async () => {
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) {
+      throw new Error("No Web3 browser wallet detected (e.g. MetaMask, Rabby).");
+    }
+
+    const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts authorized.");
+    }
+
+    setWalletAddress(accounts[0]);
+    setWalletConnected(true);
+
+    const chainHex = await ethereum.request({ method: "eth_chainId" });
+    const currentChain = parseInt(chainHex, 16);
+    setWalletChainId(currentChain);
+
+    if (currentChain !== GENLAYER_CONFIG.chainId) {
+      await handleSwitchNetwork();
+    }
+  };
+
+  // Disconnect wallet handler
+  const handleDisconnectWallet = () => {
+    setWalletConnected(false);
+    setWalletAddress("");
+  };
+
+  // Switch network handler to GenLayer StudioNet (61999)
+  const handleSwitchNetwork = async () => {
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) return;
+
+    const chainIdHex = "0x" + GENLAYER_CONFIG.chainId.toString(16);
+    try {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: chainIdHex }],
+      });
+      setWalletChainId(GENLAYER_CONFIG.chainId);
+    } catch (switchError: any) {
+      if (switchError.code === 4902) {
+        await ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [
+            {
+              chainId: chainIdHex,
+              chainName: GENLAYER_CONFIG.networkName,
+              rpcUrls: [GENLAYER_CONFIG.rpcUrl],
+              nativeCurrency: {
+                name: "GEN",
+                symbol: "GEN",
+                decimals: 18,
+              },
+              blockExplorerUrls: [GENLAYER_CONFIG.explorerUrl],
+            },
+          ],
+        });
+        setWalletChainId(GENLAYER_CONFIG.chainId);
+      } else {
+        throw switchError;
+      }
+    }
+  };
+
+  // Callback when a project is created permissionlessly on-chain
+  const handleProjectCreated = (newProject: ProjectData) => {
+    setProjects((prev) => [newProject, ...prev.filter((p) => p.id !== newProject.id)]);
+    setTargetProjectId(newProject.id);
+  };
 
   const scrollTo = (id: string) => {
     if (id === "home") {
@@ -118,7 +256,6 @@ export const App: React.FC = () => {
               loading="eager"
             />
           </picture>
-          {/* Gradients blending photograph into dark hero background */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#041315] via-[#041315]/70 to-transparent lg:block hidden" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#041315] via-transparent to-transparent lg:hidden block" />
           <div className="absolute inset-0 bg-[#041315]/30 lg:hidden block" />
@@ -129,8 +266,11 @@ export const App: React.FC = () => {
           activeTab={activeTab}
           onNavigate={scrollTo}
           onOpenWalletModal={() => setIsWalletOpen(true)}
+          onOpenCreateProject={() => setIsCreateProjectOpen(true)}
           walletConnected={walletConnected}
-          walletAddress={`${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+          walletAddress={
+            walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Connect Wallet"
+          }
         />
 
         {/* Hero Left Content */}
@@ -166,8 +306,16 @@ export const App: React.FC = () => {
               </button>
 
               <button
+                onClick={() => setIsCreateProjectOpen(true)}
+                className="bg-[#0b2434]/90 hover:bg-[#0e2f45] active:scale-[0.98] text-emerald-300 border border-emerald-500/40 text-sm font-semibold px-6 py-3 rounded-full transition-all backdrop-blur-md flex items-center justify-center gap-2"
+              >
+                <PlusCircle size={15} />
+                <span>Create a Project</span>
+              </button>
+
+              <button
                 onClick={() => setIsDemoOpen(true)}
-                className="bg-[#0a1e26]/85 hover:bg-[#0f2c38] active:scale-[0.98] text-white border border-white/30 text-sm font-semibold px-6 py-3 rounded-full transition-all backdrop-blur-md flex items-center justify-center gap-2"
+                className="bg-[#0a1e26]/85 hover:bg-[#0f2c38] active:scale-[0.98] text-white border border-white/30 text-sm font-semibold px-5 py-3 rounded-full transition-all backdrop-blur-md flex items-center justify-center gap-2"
               >
                 <Play size={15} className="fill-white" />
                 <span>Watch Demo</span>
@@ -190,8 +338,9 @@ export const App: React.FC = () => {
             {/* Left Column (7 cols): Live Projects */}
             <div className="lg:col-span-7">
               <LiveProjectsSection
-                projects={INITIAL_PROJECTS}
+                projects={projects}
                 onOpenAllProjectsModal={() => setIsAllProjectsOpen(true)}
+                onOpenCreateProject={() => setIsCreateProjectOpen(true)}
                 onSelectMilestoneForVerification={handleSelectMilestoneForVerification}
                 onOpenTransactionAction={handleOpenTransactionForProject}
               />
@@ -207,7 +356,7 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* SECTION 4: DARK FOOTER (Matching Mockup Bottom Bar) */}
+      {/* SECTION 4: DARK FOOTER */}
       <footer className="bg-[#071318] border-t border-slate-800 text-slate-400 py-4 px-4 sm:px-8 text-xs select-none">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Left: GenLayer Brand */}
@@ -232,6 +381,17 @@ export const App: React.FC = () => {
       </footer>
 
       {/* MODALS & DRAWERS */}
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        walletConnected={walletConnected}
+        walletAddress={walletAddress}
+        walletChainId={walletChainId}
+        onConnectWallet={handleConnectWallet}
+        onSwitchNetwork={handleSwitchNetwork}
+        onProjectCreated={handleProjectCreated}
+      />
+
       <WatchDemoModal
         isOpen={isDemoOpen}
         onClose={() => setIsDemoOpen(false)}
@@ -244,14 +404,17 @@ export const App: React.FC = () => {
         onClose={() => setIsWalletOpen(false)}
         isConnected={walletConnected}
         address={walletAddress}
-        onConnect={() => setWalletConnected(true)}
-        onDisconnect={() => setWalletConnected(false)}
+        chainId={walletChainId}
+        onConnect={handleConnectWallet}
+        onDisconnect={handleDisconnectWallet}
+        onSwitchNetwork={handleSwitchNetwork}
       />
 
       <AllProjectsModal
         isOpen={isAllProjectsOpen}
         onClose={() => setIsAllProjectsOpen(false)}
-        projects={INITIAL_PROJECTS}
+        projects={projects}
+        onOpenCreateProject={() => setIsCreateProjectOpen(true)}
         onSelectMilestoneForVerification={handleSelectMilestoneForVerification}
         onSelectProjectForTransaction={handleOpenTransactionForProject}
       />
@@ -279,4 +442,5 @@ export const App: React.FC = () => {
     </div>
   );
 };
+
 export default App;

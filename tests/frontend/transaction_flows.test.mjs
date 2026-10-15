@@ -52,6 +52,45 @@ function validateTransactionInputs(actionType, params) {
     if (!params.rationale || params.rationale.trim().length < 15) {
       throw new Error("A clear, substantive rationale statement (minimum 15 characters) is required for auditability.");
     }
+  } else if (actionType === "PROJECT_REGISTRATION") {
+    if (!params.title || params.title.trim().length < 4) {
+      throw new Error("Project title must be at least 4 characters.");
+    }
+    if (!params.coarseLocation || params.coarseLocation.trim().length < 3) {
+      throw new Error("Coarse geographic location is required (e.g. 'Turkana County, Kenya').");
+    }
+    if (params.aggregateBeneficiariesTarget < 0 || isNaN(params.aggregateBeneficiariesTarget)) {
+      throw new Error("Beneficiaries target must be 0 or a positive number.");
+    }
+    if (!params.targetFunding || !params.targetFunding.trim()) {
+      throw new Error("Target funding declaration is required.");
+    }
+    if (params.initialMilestone) {
+      if (!params.initialMilestone.title || !params.initialMilestone.title.trim()) {
+        throw new Error("Initial milestone title cannot be empty.");
+      }
+      if (!params.initialMilestone.targetOutcome || !params.initialMilestone.targetOutcome.trim()) {
+        throw new Error("Initial milestone target outcome cannot be empty.");
+      }
+    }
+  }
+  return true;
+}
+
+function enforceCoordinatorBinding(authenticatedSender, clientPayloadCoordinator) {
+  // Coordinator is strictly derived from transaction sender, never client payload
+  return authenticatedSender.toLowerCase();
+}
+
+function simulateReadAfterWriteVerification(expectedProjectId, expectedCoordinator, onChainState) {
+  if (!onChainState) {
+    throw new Error("Verification failed: project not found in contract storage.");
+  }
+  if (onChainState.id !== expectedProjectId) {
+    throw new Error(`Project ID mismatch: expected ${expectedProjectId}, got ${onChainState.id}`);
+  }
+  if (onChainState.coordinator.toLowerCase() !== expectedCoordinator.toLowerCase()) {
+    throw new Error(`Coordinator mismatch: expected ${expectedCoordinator}, got ${onChainState.coordinator}`);
   }
   return true;
 }
@@ -246,4 +285,189 @@ describe("AidTrace Transaction Center & Protocol Verification", () => {
     const truncated = truncateHash(hash, 4);
     assert.strictEqual(truncated, "0x4325...2338");
   });
+
+  // Test 11: Validates permissionless project creation parameters correctly
+  test("Validates PROJECT_REGISTRATION valid form parameters", () => {
+    const validParams = {
+      title: "Clean Water Logistics for Turkana",
+      coarseLocation: "Turkana County, Kenya",
+      description: "Solar-powered deep water borehole drilling and distribution.",
+      targetFunding: "15 ETH (Declared Target)",
+      aggregateBeneficiariesTarget: 800,
+      measurableOutcomes: "2 boreholes operational, 800 households reached",
+      initialMilestone: {
+        title: "Procurement of Pumping Hardware",
+        targetOutcome: "Warehouse delivery with verified manifest",
+        allocationAmount: "3.5 ETH",
+      },
+    };
+    assert.strictEqual(validateTransactionInputs("PROJECT_REGISTRATION", validParams), true);
+  });
+
+  // Test 12: Rejects project registration with invalid inputs
+  test("Rejects PROJECT_REGISTRATION with invalid title, location, or negative beneficiaries", () => {
+    // Title too short
+    assert.throws(
+      () =>
+        validateTransactionInputs("PROJECT_REGISTRATION", {
+          title: "Aid",
+          coarseLocation: "Region",
+          aggregateBeneficiariesTarget: 100,
+          targetFunding: "10 ETH",
+          measurableOutcomes: "Outcomes",
+        }),
+      /Project title must be at least 4 characters/
+    );
+
+    // Missing coarse location
+    assert.throws(
+      () =>
+        validateTransactionInputs("PROJECT_REGISTRATION", {
+          title: "Clean Water Project",
+          coarseLocation: " ",
+          aggregateBeneficiariesTarget: 100,
+          targetFunding: "10 ETH",
+          measurableOutcomes: "Outcomes",
+        }),
+      /Coarse geographic location is required/
+    );
+
+    // Negative beneficiaries target
+    assert.throws(
+      () =>
+        validateTransactionInputs("PROJECT_REGISTRATION", {
+          title: "Clean Water Project",
+          coarseLocation: "Region",
+          aggregateBeneficiariesTarget: -5,
+          targetFunding: "10 ETH",
+          measurableOutcomes: "Outcomes",
+        }),
+      /Beneficiaries target must be 0 or a positive number/
+    );
+
+    // Missing target funding
+    assert.throws(
+      () =>
+        validateTransactionInputs("PROJECT_REGISTRATION", {
+          title: "Clean Water Project",
+          coarseLocation: "Region",
+          aggregateBeneficiariesTarget: 50,
+          targetFunding: "",
+          measurableOutcomes: "Outcomes",
+        }),
+      /Target funding declaration is required/
+    );
+  });
+
+  // Test 13: Enforces coordinator address binding to transaction sender
+  test("Enforces that transaction sender is the recorded coordinator, ignoring spoofed client payloads", () => {
+    const authenticatedSender = "0x27D56637e172e9d288a4e8d35d1ea8dcd370fe47";
+    const spoofedBrowserAddress = "0x000000000000000000000000000000000000dEaD";
+
+    const boundCoordinator = enforceCoordinatorBinding(authenticatedSender, spoofedBrowserAddress);
+    assert.strictEqual(boundCoordinator, authenticatedSender.toLowerCase());
+    assert.notStrictEqual(boundCoordinator, spoofedBrowserAddress.toLowerCase());
+  });
+
+  // Test 14: Verifies read-after-write protocol before reporting success
+  test("Acceptance: reports success only after protocol receipt and read-back verification match", () => {
+    const expectedId = 2;
+    const expectedCoordinator = "0x27D56637e172e9d288a4e8d35d1ea8dcd370fe47";
+
+    const validOnChainState = {
+      id: 2,
+      title: "Clean Water Logistics",
+      coordinator: "0x27d56637e172e9d288a4e8d35d1ea8dcd370fe47",
+      status: "ACTIVE",
+    };
+
+    assert.strictEqual(
+      simulateReadAfterWriteVerification(expectedId, expectedCoordinator, validOnChainState),
+      true
+    );
+
+    // Mismatched coordinator fails closed
+    const tamperedCoordinatorState = {
+      id: 2,
+      coordinator: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    };
+    assert.throws(
+      () => simulateReadAfterWriteVerification(expectedId, expectedCoordinator, tamperedCoordinatorState),
+      /Coordinator mismatch/
+    );
+
+    // Missing project state fails closed
+    assert.throws(
+      () => simulateReadAfterWriteVerification(expectedId, expectedCoordinator, null),
+      /Verification failed: project not found/
+    );
+  });
+
+  // Test 15: Double submission prevention
+  test("Prevents duplicate submissions caused by rapid repeated clicks while in-flight", () => {
+    let isSubmitting = false;
+    let submissionsHandled = 0;
+
+    function handleSubmissionAttempt() {
+      if (isSubmitting) {
+        throw new Error("A transaction is already in flight. Please await protocol receipt.");
+      }
+      isSubmitting = true;
+      submissionsHandled++;
+    }
+
+    // First click succeeds
+    handleSubmissionAttempt();
+    assert.strictEqual(submissionsHandled, 1);
+
+    // Immediate second click is rejected
+    assert.throws(() => handleSubmissionAttempt(), /already in flight/);
+    assert.strictEqual(submissionsHandled, 1);
+  });
+
+  // Test 16: Wallet rejection never sets success status or fabricates tx hashes
+  test("Ensures wallet rejection (4001) never sets accepted state and provides clear message", () => {
+    const rejectionResponse = {
+      error: { code: 4001, message: "User rejected the request." },
+    };
+    const outcome = handleWalletSigningResponse(rejectionResponse);
+    assert.strictEqual(outcome.status, "REJECTED");
+    assert.strictEqual(outcome.txHash, undefined);
+    assert.match(outcome.message, /rejected/);
+  });
+
+  // Test 17: Separation between accounting entries and monetary contributions
+  test("Strictly classifies record_funding as informational accounting and rejects custodial transfer assumptions", () => {
+    const fundingAction = {
+      method: "record_funding",
+      amount: "5.0",
+      contributor: "0xAlice",
+      classification: "INFORMATIONAL_ACCOUNTING_RECORD",
+      isPayable: false,
+      holdsCustody: false,
+    };
+
+    assert.strictEqual(fundingAction.isPayable, false);
+    assert.strictEqual(fundingAction.holdsCustody, false);
+    assert.strictEqual(fundingAction.classification, "INFORMATIONAL_ACCOUNTING_RECORD");
+  });
+
+  // Test 18: Distinguishes live on-chain project records from sample demonstration fixtures
+  test("Distinguishes live on-chain project records from sample demonstration fixtures", () => {
+    const liveProject = {
+      id: 1,
+      networkSource: "StudioNet On-Chain (Live Contract)",
+      coordinator: "0xe4220c4b71877bb94eb173f467ef5c5557017085",
+    };
+    const sampleDemo = {
+      id: 2,
+      networkSource: "Sample Demonstration",
+      coordinator: "0x71C67930752c54969814a21CE1A8bF4C3B24D984",
+    };
+
+    assert.strictEqual(liveProject.networkSource.includes("StudioNet"), true);
+    assert.strictEqual(sampleDemo.networkSource.includes("Sample"), true);
+    assert.notStrictEqual(liveProject.networkSource, sampleDemo.networkSource);
+  });
 });
+

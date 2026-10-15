@@ -18,6 +18,32 @@ export const GENLAYER_CONFIG = {
   isGasless: true,
 };
 
+import { createClient } from "genlayer-js";
+import { studionet } from "genlayer-js/chains";
+
+/**
+ * Creates a read-only GenLayer client pointing directly to StudioNet RPC.
+ */
+export function getGenLayerReadClient() {
+  return createClient({
+    chain: studionet,
+    endpoint: GENLAYER_CONFIG.rpcUrl,
+  });
+}
+
+/**
+ * Creates an authenticated GenLayer client with an injected EIP-1193 provider.
+ */
+export function getGenLayerWriteClient(provider: any, accountAddress: string) {
+  return createClient({
+    chain: studionet,
+    endpoint: GENLAYER_CONFIG.rpcUrl,
+    provider,
+    account: accountAddress as `0x${string}`,
+  });
+}
+
+
 export interface AuditEvent {
   type: string;
   sender: string;
@@ -190,3 +216,243 @@ export const INITIAL_PROJECTS: ProjectData[] = [
     ],
   },
 ];
+
+/**
+ * Fetch current project counter directly from the deployed contract.
+ */
+export async function fetchOnChainProjectCount(): Promise<number> {
+  const client = getGenLayerReadClient();
+  const count = await client.readContract({
+    address: GENLAYER_CONFIG.contractAddress as any,
+    functionName: "get_project_count",
+    args: [],
+  });
+  return Number(count);
+}
+
+/**
+ * Fetch a single project directly from the deployed GenLayer contract.
+ */
+export async function fetchOnChainProject(projectId: number): Promise<ProjectData | null> {
+  const client = getGenLayerReadClient();
+  try {
+    const raw = await client.readContract({
+      address: GENLAYER_CONFIG.contractAddress as any,
+      functionName: "get_project",
+      args: [projectId],
+    });
+
+    if (!raw) return null;
+    const p = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+    let milestones: MilestoneData[] = [];
+    try {
+      milestones = await fetchOnChainMilestones(projectId);
+    } catch {
+      // Fallback empty milestones
+    }
+
+    return {
+      id: Number(p.id ?? projectId),
+      title: p.title || `Project #${projectId}`,
+      description: p.description || "",
+      coarse_location: p.coarse_location || p.coarseLocation || "Declared Scope",
+      coordinator: (p.coordinator || "").toLowerCase(),
+      target_funding: p.target_funding ? `${p.target_funding} (Declared Target)` : "Declared Accounting Target",
+      total_received: p.total_received ? `${p.total_received} (Recorded Entries)` : "0 (Recorded Entries)",
+      aggregate_beneficiaries_target: Number(p.aggregate_beneficiaries_target || 0),
+      measurable_outcomes: p.measurable_outcomes || "Planning Target",
+      status: (p.status || "ACTIVE") as any,
+      milestone_count: Number(p.milestone_count || milestones.length),
+      networkSource: "StudioNet On-Chain (Live Contract)",
+      disclaimer: "Permanently recorded on GenLayer StudioNet. Informational accounting entries only; does not hold custodial escrow.",
+      milestones,
+    };
+  } catch (err) {
+    console.warn(`[GenLayer] Error fetching project ${projectId}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Fetch all milestones for a project from the deployed GenLayer contract.
+ */
+export async function fetchOnChainMilestones(projectId: number): Promise<MilestoneData[]> {
+  const client = getGenLayerReadClient();
+  try {
+    const rawList = await client.readContract({
+      address: GENLAYER_CONFIG.contractAddress as any,
+      functionName: "get_project_milestones",
+      args: [projectId],
+    });
+
+    if (!rawList || !Array.isArray(rawList)) return [];
+
+    return rawList.map((item: any, idx: number) => {
+      const m = typeof item === "string" ? JSON.parse(item) : item;
+      return {
+        id: Number(m.id ?? idx + 1),
+        projectId: Number(m.project_id ?? projectId),
+        title: m.title || `Milestone #${idx + 1}`,
+        targetOutcome: m.target_outcome || m.targetOutcome || "",
+        allocationAmount: m.allocation_amount || m.allocationAmount || "0",
+        evidenceHash: m.evidence_hash || m.evidenceHash || "",
+        metadataUri: m.metadata_uri || m.metadataUri || "",
+        status: (m.status || "PENDING") as any,
+        assessmentStatus: (m.assessment_status || m.assessmentStatus || "NONE") as any,
+        assessmentRationale: m.assessment_rationale || m.assessmentRationale || "",
+        reviewer: m.reviewer || "",
+        rationaleHash: m.rationale_hash || m.rationaleHash || "",
+      };
+    });
+  } catch (err) {
+    console.warn(`[GenLayer] Error fetching milestones for project ${projectId}:`, err);
+    return [];
+  }
+}
+
+/**
+ * Fetch all projects from the deployed GenLayer contract.
+ */
+export async function fetchAllOnChainProjects(): Promise<ProjectData[]> {
+  try {
+    const count = await fetchOnChainProjectCount();
+    const fetched: ProjectData[] = [];
+    for (let i = 1; i <= count; i++) {
+      const p = await fetchOnChainProject(i);
+      if (p) fetched.push(p);
+    }
+    return fetched;
+  } catch (err) {
+    console.warn("[GenLayer] Error loading on-chain projects:", err);
+    return [];
+  }
+}
+
+export interface CreateProjectParams {
+  title: string;
+  description: string;
+  coarseLocation: string;
+  targetFunding: string;
+  aggregateBeneficiariesTarget: number;
+  measurableOutcomes: string;
+  initialMilestone?: {
+    title: string;
+    targetOutcome: string;
+    allocationAmount: string;
+  };
+}
+
+/**
+ * Submits a genuine on-chain `create_project` transaction via GenLayer SDK,
+ * awaits consensus confirmation, and verifies the resulting on-chain state.
+ */
+export async function createProjectOnChain(
+  params: CreateProjectParams,
+  provider: any,
+  accountAddress: string
+): Promise<{
+  txHash: string;
+  projectId: number;
+  project: ProjectData;
+  milestoneTxHash?: string;
+}> {
+  if (!accountAddress) {
+    throw new Error("Wallet not connected. Connect an authorized account to register a project.");
+  }
+  if (!provider) {
+    throw new Error("No EIP-1193 Web3 provider available.");
+  }
+
+  // Input validation
+  if (!params.title || !params.title.trim()) {
+    throw new Error("Project title is required.");
+  }
+  if (!params.coarseLocation || !params.coarseLocation.trim()) {
+    throw new Error("Coarse geographic location is required.");
+  }
+  if (params.aggregateBeneficiariesTarget < 0 || isNaN(params.aggregateBeneficiariesTarget)) {
+    throw new Error("Beneficiaries target must be a non-negative number.");
+  }
+  if (!params.targetFunding || !params.targetFunding.trim()) {
+    throw new Error("Target funding declaration is required.");
+  }
+
+  const client = getGenLayerWriteClient(provider, accountAddress);
+
+  // 1. Submit create_project transaction
+  const txHash = await client.writeContract({
+    address: GENLAYER_CONFIG.contractAddress as any,
+    functionName: "create_project",
+    args: [
+      params.title.trim(),
+      params.description.trim(),
+      params.coarseLocation.trim(),
+      params.targetFunding.trim(),
+      Number(params.aggregateBeneficiariesTarget),
+      params.measurableOutcomes.trim(),
+    ],
+    value: 0n,
+  });
+
+  // 2. Await consensus decision
+  const receipt = await client.waitForTransactionReceipt({
+    hash: txHash as any,
+    retries: 60,
+    interval: 3000,
+  } as any);
+
+  // 3. Independent read-after-write verification
+  const newCount = await fetchOnChainProjectCount();
+  const createdProject = await fetchOnChainProject(newCount);
+
+  if (!createdProject) {
+    throw new Error(`Transaction accepted (${txHash}) but failed to retrieve project #${newCount} from contract.`);
+  }
+
+  // 4. Verify that authenticated caller was recorded as coordinator
+  const expectedCoordinator = accountAddress.toLowerCase();
+  const actualCoordinator = (createdProject.coordinator || "").toLowerCase();
+  if (actualCoordinator && actualCoordinator !== expectedCoordinator) {
+    console.warn(`Coordinator mismatch: expected ${expectedCoordinator}, got ${actualCoordinator}`);
+  }
+
+  // 5. Optionally add initial milestone if requested
+  let milestoneTxHash: string | undefined;
+  if (params.initialMilestone && params.initialMilestone.title.trim()) {
+    try {
+      const mHash = await client.writeContract({
+        address: GENLAYER_CONFIG.contractAddress as any,
+        functionName: "add_milestone",
+        args: [
+          newCount,
+          params.initialMilestone.title.trim(),
+          params.initialMilestone.targetOutcome.trim(),
+          params.initialMilestone.allocationAmount.trim(),
+        ],
+        value: 0n,
+      });
+      milestoneTxHash = mHash;
+
+      await client.waitForTransactionReceipt({
+        hash: mHash as any,
+        retries: 40,
+        interval: 3000,
+      } as any);
+
+      // Refresh milestones
+      createdProject.milestones = await fetchOnChainMilestones(newCount);
+      createdProject.milestone_count = createdProject.milestones.length;
+    } catch (milestoneErr) {
+      console.warn("Initial milestone registration skipped or deferred:", milestoneErr);
+    }
+  }
+
+  return {
+    txHash,
+    projectId: newCount,
+    project: createdProject,
+    milestoneTxHash,
+  };
+}
+

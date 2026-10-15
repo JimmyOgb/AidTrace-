@@ -332,3 +332,59 @@ def test_multiple_milestones_and_state_consistency(direct_vm, direct_deploy, dir
     with direct_vm.expect_revert("Milestone 99 does not exist"):
         contract.get_milestone(1, 99)
 
+
+def test_permissionless_creation_and_independent_read(direct_vm, direct_deploy, direct_alice, direct_bob):
+    """
+    Acceptance Test:
+    1. An individual wallet (Alice) permissionlessly creates a project.
+    2. Contract records Alice as the authenticated coordinator.
+    3. Another wallet (Bob) independently reads the project and verifies state.
+    4. Bob is prevented from adding milestones or modifying status of Alice's project.
+    5. Alice successfully adds a milestone and Bob independently verifies it.
+    """
+    contract = direct_deploy("contracts/aid_trace.py")
+
+    # 1. Alice creates project
+    direct_vm.sender = direct_alice
+    p_id = contract.create_project(
+        "Permissionless Clean Water Initiative",
+        "Community managed solar water filtration system.",
+        "Garissa County, Kenya",
+        "12 ETH",
+        650,
+        "Continuous potable water delivery to 650 households"
+    )
+    assert p_id == 1
+
+    # 2. Contract records Alice as authenticated coordinator
+    project_read_by_alice = contract.get_project(1)
+    assert project_read_by_alice["coordinator"] == to_hex(direct_alice)
+    assert project_read_by_alice["status"] == "ACTIVE"
+    assert project_read_by_alice["total_received"] == "0"
+
+    # 3. Bob independently reads the project
+    direct_vm.sender = direct_bob
+    project_read_by_bob = contract.get_project(1)
+    assert project_read_by_bob["id"] == 1
+    assert project_read_by_bob["coordinator"] == to_hex(direct_alice)
+    assert project_read_by_bob["title"] == "Permissionless Clean Water Initiative"
+
+    # 4. Bob cannot modify Alice's project (Access Control)
+    with direct_vm.expect_revert("Caller is not authorized coordinator"):
+        contract.add_milestone(1, "Unauthorized Milestone", "Outcome", "1 ETH")
+
+    with direct_vm.expect_revert("Caller is not authorized coordinator"):
+        contract.set_project_status(1, "PAUSED")
+
+    # 5. Alice adds milestone and Bob independently reads it
+    direct_vm.sender = direct_alice
+    m_id = contract.add_milestone(1, "Filtration Unit Delivery", "Delivered on site", "3 ETH")
+    assert m_id == 1
+
+    direct_vm.sender = direct_bob
+    bob_milestones = contract.get_project_milestones(1)
+    assert len(bob_milestones) == 1
+    assert bob_milestones[0]["title"] == "Filtration Unit Delivery"
+    assert bob_milestones[0]["status"] == "PENDING"
+
+

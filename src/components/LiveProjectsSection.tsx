@@ -19,6 +19,7 @@ import { ProjectData, MilestoneData, GENLAYER_CONFIG } from "../utils/genlayer";
 interface LiveProjectsSectionProps {
   projects: ProjectData[];
   onOpenAllProjectsModal: () => void;
+  onOpenCreateProject?: () => void;
   onSelectMilestoneForVerification: (milestone: MilestoneData, projectTitle: string) => void;
   onOpenTransactionAction?: (projectId: number) => void;
 }
@@ -26,27 +27,32 @@ interface LiveProjectsSectionProps {
 export const LiveProjectsSection: React.FC<LiveProjectsSectionProps> = ({
   projects,
   onOpenAllProjectsModal,
+  onOpenCreateProject,
   onSelectMilestoneForVerification,
   onOpenTransactionAction,
 }) => {
+  const [selectedProjectId, setSelectedProjectId] = useState<number>(projects[0]?.id || 1);
   const [showMilestones, setShowMilestones] = useState(false);
-  const primaryProject = projects[0] || {
-    id: 1,
-    title: "Horn of Africa Emergency Water Logistics",
-    coarse_location: "Turkana County, Kenya",
-    description:
-      "Emergency water supply and logistics support for vulnerable communities in the Horn of Africa region.",
-    target_funding: "10.0",
-    total_received: "0.0",
-    aggregate_beneficiaries_target: 1200,
-    status: "ACTIVE",
-    milestones: [],
-  };
+
+  const primaryProject =
+    projects.find((p) => p.id === selectedProjectId) ||
+    projects[0] || {
+      id: 1,
+      title: "Horn of Africa Emergency Water Logistics",
+      coarse_location: "Turkana County, Kenya",
+      description:
+        "Emergency water supply and logistics support for vulnerable communities in the Horn of Africa region.",
+      target_funding: "10.0",
+      total_received: "0.0",
+      aggregate_beneficiaries_target: 1200,
+      status: "ACTIVE",
+      milestones: [],
+    };
 
   return (
     <div id="projects" className="flex flex-col gap-3">
       {/* Section Header */}
-      <div className="flex items-center justify-between pb-1">
+      <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
             <FolderKanban size={20} />
@@ -59,16 +65,58 @@ export const LiveProjectsSection: React.FC<LiveProjectsSectionProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onOpenAllProjectsModal}
-          className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 transition-colors group focus:outline-none"
-        >
-          <span>View All Projects</span>
-          <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenCreateProject && (
+            <button
+              onClick={onOpenCreateProject}
+              className="text-xs font-bold bg-[#00d084] hover:bg-[#00ba76] text-black px-3 py-1.5 rounded-xl transition-all shadow-sm flex items-center gap-1 focus:outline-none"
+            >
+              <span>+ Create Project</span>
+            </button>
+          )}
+
+          <button
+            onClick={onOpenAllProjectsModal}
+            className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center gap-1 transition-colors group focus:outline-none"
+          >
+            <span>View All ({projects.length})</span>
+            <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
       </div>
 
-      {/* Main Project Card (Horn of Africa Emergency Water Logistics) */}
+      {/* Project Selector Pills if multiple */}
+      {projects.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          {projects.map((p) => {
+            const isSelected = p.id === primaryProject.id;
+            const isStudioNet = p.networkSource.includes("StudioNet");
+            return (
+              <button
+                key={p.id}
+                onClick={() => setSelectedProjectId(p.id)}
+                className={`px-3 py-1.5 rounded-xl border font-semibold flex items-center gap-1.5 shrink-0 transition-all focus:outline-none ${
+                  isSelected
+                    ? "bg-[#062423] text-emerald-300 border-emerald-500/50 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <span>#{p.id}</span>
+                <span className="truncate max-w-[150px]">{p.title}</span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.2 rounded font-normal ${
+                    isStudioNet ? "bg-teal-500/20 text-teal-300" : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {isStudioNet ? "On-Chain" : "Demo"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Main Project Card */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-5 flex flex-col justify-between">
         <div className="flex flex-col sm:flex-row gap-5">
           {/* Project Thumbnail Image */}

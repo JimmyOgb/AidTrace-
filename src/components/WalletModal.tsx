@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Wallet, Check, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
+import { X, Wallet, Check, ExternalLink, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
 import { GenLayerLogo } from "./Icons";
 import { GENLAYER_CONFIG } from "../utils/genlayer";
 
@@ -8,8 +8,10 @@ interface WalletModalProps {
   onClose: () => void;
   isConnected: boolean;
   address: string;
-  onConnect: () => void;
+  chainId?: number | null;
+  onConnect: () => Promise<void>;
   onDisconnect: () => void;
+  onSwitchNetwork?: () => Promise<void>;
 }
 
 export const WalletModal: React.FC<WalletModalProps> = ({
@@ -17,24 +19,48 @@ export const WalletModal: React.FC<WalletModalProps> = ({
   onClose,
   isConnected,
   address,
+  chainId,
   onConnect,
   onDisconnect,
+  onSwitchNetwork,
 }) => {
   const [connecting, setConnecting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   if (!isOpen) return null;
 
+  const isStudioNet = chainId === GENLAYER_CONFIG.chainId;
+
   const handleConnectClick = async () => {
     setConnecting(true);
-    await new Promise((r) => setTimeout(r, 600));
-    onConnect();
-    setConnecting(false);
-    onClose();
+    setErrorMessage("");
+    try {
+      await onConnect();
+      onClose();
+    } catch (err: any) {
+      if (err.code === 4001 || err.message?.includes("User rejected")) {
+        setErrorMessage("Wallet connection request was rejected by user.");
+      } else {
+        setErrorMessage(err.message || "Failed to connect wallet.");
+      }
+    } finally {
+      setConnecting(false);
+    }
   };
 
   const handleDisconnectClick = () => {
     onDisconnect();
     onClose();
+  };
+
+  const handleSwitchClick = async () => {
+    if (onSwitchNetwork) {
+      try {
+        await onSwitchNetwork();
+      } catch (err: any) {
+        setErrorMessage(err.message || "Failed to switch network.");
+      }
+    }
   };
 
   return (
@@ -76,26 +102,56 @@ export const WalletModal: React.FC<WalletModalProps> = ({
               <span className="font-mono text-white">61999 (0xf22f)</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400">Intelligent Contract</span>
+              <span className="text-slate-400">Deployed Contract</span>
               <span className="font-mono text-teal-300 text-[11px] truncate max-w-[200px]">
                 {GENLAYER_CONFIG.contractAddress}
               </span>
             </div>
           </div>
 
+          {errorMessage && (
+            <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-xs text-amber-200 flex items-start gap-2">
+              <AlertCircle size={14} className="shrink-0 mt-0.5 text-amber-400" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
           {isConnected ? (
             <div className="flex flex-col gap-3">
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex flex-col gap-1.5">
-                <span className="text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
-                  <Check size={14} />
-                  <span>Wallet Connected</span>
-                </span>
+              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-emerald-300 font-semibold flex items-center gap-1.5">
+                    <Check size={14} />
+                    <span>Wallet Connected</span>
+                  </span>
+                  {chainId !== undefined && (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                        isStudioNet
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                      }`}
+                    >
+                      Chain: {chainId ?? "Unknown"}
+                    </span>
+                  )}
+                </div>
                 <span className="font-mono text-xs text-white break-all">{address}</span>
               </div>
 
+              {!isStudioNet && onSwitchNetwork && (
+                <button
+                  onClick={handleSwitchClick}
+                  className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold border border-amber-500/40 flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw size={13} />
+                  <span>Switch Network to GenLayer StudioNet (61999)</span>
+                </button>
+              )}
+
               <button
                 onClick={handleDisconnectClick}
-                className="w-full py-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/30 transition-colors"
+                className="w-full py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-semibold border border-rose-500/30 transition-colors"
               >
                 Disconnect Session
               </button>
@@ -105,7 +161,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({
               <button
                 onClick={handleConnectClick}
                 disabled={connecting}
-                className="w-full py-3.5 rounded-xl bg-[#00d084] hover:bg-[#00ba76] text-black text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-xl bg-[#00d084] hover:bg-[#00ba76] disabled:opacity-50 text-black text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
               >
                 <GenLayerLogo size={16} />
                 <span>
@@ -115,9 +171,15 @@ export const WalletModal: React.FC<WalletModalProps> = ({
                 </span>
               </button>
 
-              <p className="text-[11px] text-slate-400 text-center leading-normal">
-                GenLayer StudioNet is gasless. You do not need real funds or gas tokens to interact.
-              </p>
+              <div className="bg-black/30 border border-white/5 rounded-xl p-3 flex flex-col gap-1.5 text-[11px] text-slate-400">
+                <div className="flex items-center gap-1.5 text-slate-300 font-semibold">
+                  <ShieldCheck size={13} className="text-emerald-400" />
+                  <span>Security & Safety Guarantee</span>
+                </div>
+                <p className="leading-normal">
+                  GenLayer StudioNet is completely gasless. AidTrace will <strong>never</strong> request your seed phrase, private key, or any financial tokens.
+                </p>
+              </div>
             </div>
           )}
 

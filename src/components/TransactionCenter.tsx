@@ -25,6 +25,7 @@ import {
   VERIFIED_AUDIT_TRAIL,
   AuditEvent,
   TransactionRecord,
+  getGenLayerWriteClient,
 } from "../utils/genlayer";
 import { computeTextSha256, isValidSha256Hex, truncateHash } from "../utils/crypto";
 
@@ -345,30 +346,45 @@ export const TransactionCenter: React.FC<TransactionCenterProps> = ({
       const ethereum = (window as any).ethereum;
       let txHash = "";
 
-      if (ethereum && walletAddress) {
-        // Request signing verification from the user via EIP-1193
-        try {
-          const authMessage = `AidTrace Protocol Authorization:\nAction: ${actionMethod}\nContract: ${GENLAYER_CONFIG.contractAddress}\nChain ID: ${GENLAYER_CONFIG.chainId}\nDetails: ${JSON.stringify(payloadDetails, null, 2)}\nTimestamp: ${new Date().toISOString()}`;
-          const signature = await ethereum.request({
-            method: "personal_sign",
-            params: [authMessage, walletAddress],
-          });
-          // Hash the signature + payload to derive a verifiable client protocol tx identifier
-          txHash = await computeTextSha256(signature + actionMethod + Date.now().toString());
-        } catch (walletErr: any) {
-          if (walletErr.code === 4001) {
-            setTxLifecycleState("REJECTED");
-            setValidationError("User rejected transaction signature request in wallet.");
-            setIsSubmitting(false);
-            return;
-          }
-          // If personal_sign fails, generate hash
-          txHash = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, "0")).join("");
-        }
-      } else {
-        // Generate cryptographic action hash for verification record
-        txHash = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, "0")).join("");
+      if (!ethereum || !walletAddress) {
+        throw new Error("Wallet not connected. Connect your Web3 wallet or use the Developer CLI below.");
       }
+
+      if (walletChainId !== GENLAYER_CONFIG.chainId) {
+        throw new Error(`Connected to Chain ID ${walletChainId}. Please switch to GenLayer StudioNet (61999).`);
+      }
+
+      // Build genuine contract args
+      let contractArgs: any[] = [];
+      if (activeTab === "RECORD_UPDATE") {
+        if (updateSubtype === "FUNDING_ENTRY") {
+          contractArgs = [recordProjectId, fundingAmount.trim(), contributorTag.trim()];
+        } else if (updateSubtype === "ADD_MILESTONE") {
+          contractArgs = [recordProjectId, newMilestoneTitle.trim(), newMilestoneOutcome.trim(), newMilestoneAllocation.trim()];
+        } else {
+          contractArgs = [recordProjectId, projectNewStatus];
+        }
+      } else if (activeTab === "SUBMIT_EVIDENCE") {
+        contractArgs = [evidenceProjectId, evidenceMilestoneId, evidenceHash.trim(), metadataUri.trim()];
+      } else if (activeTab === "REVIEWER_ATTESTATION") {
+        contractArgs = [reviewProjectId, reviewMilestoneId, reviewOutcome, payloadDetails.rationale_hash];
+      }
+
+      // Execute on-chain contract write
+      const client = getGenLayerWriteClient(ethereum, walletAddress);
+      txHash = await client.writeContract({
+        address: GENLAYER_CONFIG.contractAddress as any,
+        functionName: actionMethod,
+        args: contractArgs,
+        value: 0n,
+      });
+
+      // Await consensus receipt
+      await client.waitForTransactionReceipt({
+        hash: txHash as any,
+        retries: 50,
+        interval: 3000,
+      } as any);
 
       // Create record
       const newRecord: TransactionRecord = {
@@ -376,7 +392,7 @@ export const TransactionCenter: React.FC<TransactionCenterProps> = ({
         method: actionMethod,
         type: activeTab,
         status: "ACCEPTED",
-        sender: walletAddress || GENLAYER_CONFIG.deployerAddress,
+        sender: walletAddress,
         txHash: txHash,
         timestamp: new Date().toLocaleTimeString() + " UTC",
         summary: actionSummary,
@@ -409,8 +425,13 @@ export const TransactionCenter: React.FC<TransactionCenterProps> = ({
         onTransactionSuccess(newRecord);
       }
     } catch (err: any) {
-      setTxLifecycleState("FAILED");
-      setValidationError("Transaction failed: " + (err.message || "Unknown error"));
+      if (err.code === 4001 || err.message?.includes("User rejected") || err.message?.includes("rejected")) {
+        setTxLifecycleState("REJECTED");
+        setValidationError("User rejected transaction signature request in wallet.");
+      } else {
+        setTxLifecycleState("FAILED");
+        setValidationError("Transaction failed: " + (err.message || "Unknown error"));
+      }
     } finally {
       setIsSubmitting(false);
     }

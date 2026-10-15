@@ -19,6 +19,7 @@ interface AllProjectsModalProps {
   isOpen: boolean;
   onClose: () => void;
   projects: ProjectData[];
+  onOpenCreateProject?: () => void;
   onSelectMilestoneForVerification: (milestone: MilestoneData, projectTitle: string) => void;
   onSelectProjectForTransaction: (projectId: number) => void;
 }
@@ -27,6 +28,7 @@ export const AllProjectsModal: React.FC<AllProjectsModalProps> = ({
   isOpen,
   onClose,
   projects,
+  onOpenCreateProject,
   onSelectMilestoneForVerification,
   onSelectProjectForTransaction,
 }) => {
@@ -55,12 +57,25 @@ export const AllProjectsModal: React.FC<AllProjectsModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors focus:outline-none"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-3">
+            {onOpenCreateProject && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenCreateProject();
+                }}
+                className="bg-[#00d084] hover:bg-[#00ba76] text-black text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm"
+              >
+                + Create Project
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white flex items-center justify-center transition-colors focus:outline-none"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Project List */}
